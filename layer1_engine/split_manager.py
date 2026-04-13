@@ -10,8 +10,10 @@ Le SplitManager maintient aussi le compteur N_trials par famille.
 
 from __future__ import annotations
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 import pandas as pd
+import yaml
 
 
 @dataclass(frozen=True)
@@ -36,14 +38,31 @@ class SplitManager:
 
     Usage
     -----
+    # Via config.yaml
+    sm = SplitManager(config_path="config.yaml")
+
+    # Via Split explicite
     sm = SplitManager(split=Split("2019-01-01", "2022-12-31",
                                    "2023-01-01", "2024-12-31"))
     is_r, oos_r = sm.apply(bundle.r_paxg_btc)
     n = sm.increment("EMA_span_variants")  # → 1, 2, 3 ...
     """
 
-    def __init__(self, split: Split):
-        self._split   = split
+    def __init__(self, split: Split = None, config_path: str = None):
+        if split is not None:
+            self._split = split
+        elif config_path is not None:
+            cfg = yaml.safe_load(Path(config_path).read_text())
+            s   = cfg["splits"]
+            self._split = Split(
+                is_start  = s["is_start"],
+                is_end    = s["is_end"],
+                oos_start = s["oos_start"],
+                oos_end   = s["oos_end"],
+                label     = s.get("label", "config"),
+            )
+        else:
+            raise ValueError("SplitManager requires either split= or config_path=")
         self._locked  = False
         self._n_trials: dict[str, int] = {}
 
@@ -53,6 +72,13 @@ class SplitManager:
 
     def apply(self, series: pd.Series) -> tuple[pd.Series, pd.Series]:
         return self._split.apply(series)
+
+    def apply_df(self, df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """Retourne (df_IS, df_OOS) pour un DataFrame indexé par date."""
+        s   = self._split
+        is_ = df.loc[str(s.is_start):str(s.is_end)]
+        oos_ = df.loc[str(s.oos_start):str(s.oos_end)]
+        return is_, oos_
 
     @property
     def split(self) -> Split:

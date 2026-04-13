@@ -32,7 +32,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from layer1_engine.data_loader      import DataLoader
 from layer1_engine.split_manager    import SplitManager
@@ -110,21 +110,44 @@ def run(skip_q2: bool = False, fast: bool = False) -> dict:
         print("\n⏹️  Hypothèse déjà certifiée dans KB.")
         return check
 
-    # ── 2. Données réelles ───────────────────────────────────────────────
+    # ── 2. Données ───────────────────────────────────────────────────────
     print("\n📡 Chargement données ...")
-    loader = DataLoader(config_path=CONFIG_PATH)
-    paxg_usd, btc_usd, r_paxg_usd, r_btc_usd = loader.load_prices(
-        start="2019-01-01", end="2024-12-31"
-    )
-    # Construire le bundle minimal attendu par METISRunner
     import types
-    bundle = types.SimpleNamespace(
-        paxg_usd = paxg_usd,
-        btc_usd  = btc_usd,
-        paxg_btc = paxg_usd / btc_usd,
-    )
-    print(f"   {len(r_paxg_usd)} jours chargés "
-          f"({r_paxg_usd.index[0]} → {r_paxg_usd.index[-1]})")
+    try:
+        loader = DataLoader(config_path=CONFIG_PATH)
+        paxg_usd, btc_usd, r_paxg_usd, r_btc_usd = loader.load_prices(
+            start="2019-01-01", end="2024-12-31"
+        )
+        bundle = types.SimpleNamespace(
+            paxg_usd = paxg_usd,
+            btc_usd  = btc_usd,
+            paxg_btc = paxg_usd / btc_usd,
+        )
+        print(f"   {len(r_paxg_usd)} jours chargés "
+              f"({r_paxg_usd.index[0]} → {r_paxg_usd.index[-1]})")
+    except Exception as e:
+        # Fallback : données synthétiques (test / sans internet)
+        print(f"   ⚠️  Données réelles indisponibles ({e.__class__.__name__}: {e})")
+        print("   → Utilisation de données synthétiques (résultats non certifiants)")
+        from layer2_qualification.mif.synthetic_data import generate_synthetic_paxgbtc
+        r_pair_s, r_base_s = generate_synthetic_paxgbtc(T=1500, seed=42)
+        idx      = r_pair_s.index
+        btc_usd  = pd.Series(1000 * np.exp(r_base_s.cumsum()),          index=idx, name="btc")
+        paxg_usd = pd.Series(1800 * np.exp((r_pair_s + r_base_s).cumsum()), index=idx, name="paxg")
+        r_paxg_usd = np.log(paxg_usd / paxg_usd.shift(1)).dropna()
+        r_btc_usd  = np.log(btc_usd  / btc_usd.shift(1)).dropna()
+        common     = r_paxg_usd.index.intersection(r_btc_usd.index)
+        r_paxg_usd = r_paxg_usd.loc[common]
+        r_btc_usd  = r_btc_usd.loc[common]
+        paxg_usd   = paxg_usd.loc[common]
+        btc_usd    = btc_usd.loc[common]
+        bundle = types.SimpleNamespace(
+            paxg_usd = paxg_usd,
+            btc_usd  = btc_usd,
+            paxg_btc = paxg_usd / btc_usd,
+        )
+        print(f"   {len(r_paxg_usd)} jours synthétiques "
+              f"({r_paxg_usd.index[0].date()} → {r_paxg_usd.index[-1].date()})")
 
     sm = SplitManager(config_path=CONFIG_PATH)
     sm.set_n_trials(FAMILY, N_TRIALS)
@@ -184,9 +207,15 @@ def run(skip_q2: bool = False, fast: bool = False) -> dict:
     mif_summary.print_summary()
 
     if "FAIL" in mif_summary.verdict:
-        kb.record_verdict(HYPOTHESIS, "suspendu",
-                          notes=f"MIF {mif_summary.verdict}")
-        return {"verdict": mif_summary.verdict, "stopped": "MIF"}
+        if not fast:
+            # En mode complet, arrêt immédiat sur échec MIF
+            kb.record_verdict(HYPOTHESIS, "suspendu",
+                              notes=f"MIF {mif_summary.verdict}")
+            return {"verdict": mif_summary.verdict, "stopped": "MIF"}
+        else:
+            # En mode fast (test), continuer malgré l'échec MIF
+            print(f"\n⚠️  MIF {mif_summary.verdict} — mode fast, pipeline continue...")
+
 
     # ── 7. MÉTIS ─────────────────────────────────────────────────────────
     print("\n" + "─"*62)

@@ -1,0 +1,22 @@
+engine:
+  fees_pct: 0.001
+  initial_capital: 10000.0
+  mode: lump_sum
+
+rates:
+  rf_fed:  0.04
+  rf_usdc: 0.03
+  rf_zero: 0.0
+
+splits:
+  label:     "PAXG_BTC_7030"
+  is_start:  "2020-06-01"
+  is_end:    "2023-05-31"
+  oos_start: "2023-06-01"
+  oos_end:   "2024-12-31"
+
+data:
+  cache_dir: ".cache"
+  tickers:
+    btc:  "BTC-USD"
+    paxg: "PAXG-USD"
