@@ -42,7 +42,8 @@ pkgs.mkShell {
     source "$VENV_DIR/bin/activate"
     pip install --upgrade pip setuptools wheel --quiet
 
-    # 3. Packages pip uniquement
+    # 3. Packages pip uniquement (absent de nixpkgs ou inaccessibles via --system-site-packages)
+    pip install --quiet scipy pyyaml matplotlib
     # yfinance : absent de nixpkgs
     pip install --quiet yfinance
     # pytest : tests
