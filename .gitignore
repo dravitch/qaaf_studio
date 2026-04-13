@@ -1,0 +1,74 @@
+# ── Environnements Python ─────────────────────────────────────────────────────
+.venv_qaaf/
+.venv_papertrading/
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── Cache DataLoader ───────────────────────────────────────────────────────────
+# Données Yahoo Finance téléchargées localement — ne pas versionner
+.cache/
+*.parquet
+# Exception : garder les CSV de données historiques committés si voulu
+# !data/historical/*.csv
+
+# ── Checkpoints MÉTIS ─────────────────────────────────────────────────────────
+# Sauvegardes atomiques de sessions longues (permutation 10k, walk-forward)
+sessions/*/checkpoints/*.yaml
+sessions/*/checkpoints/*.csv
+sessions/*/checkpoints/*.pkl
+# Exception : garder le dernier checkpoint finalisé
+# !sessions/*/checkpoints/final_*.yaml
+
+# ── Résultats de sessions ─────────────────────────────────────────────────────
+# Fichiers de log JSON générés automatiquement
+sessions/**/session_log_*.json
+sessions/**/*.pkl
+
+# ── KB — ne PAS ignorer ───────────────────────────────────────────────────────
+# Les fichiers YAML KB sont la mémoire du projet — toujours versionnés
+# (ne pas ajouter kb_*.yaml ici)
+
+# ── NixOS ─────────────────────────────────────────────────────────────────────
+result
+result-*
+.direnv/
+
+# ── pytest / unittest ─────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+*.egg-info/
+dist/
+build/
+
+# ── Jupyter (si utilisé pour exploration) ─────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Éditeurs ──────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ── Données sensibles ─────────────────────────────────────────────────────────
+# Clés API, tokens — jamais dans le repo
+*.env
+.env.*
+secrets.yaml
+secrets.yml
+
+# ── Fichiers temporaires ──────────────────────────────────────────────────────
+*.tmp
+*.bak
+*.orig
+/tmp/

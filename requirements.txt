@@ -1,0 +1,17 @@
+# QAAF Studio 3.0 — Dépendances pip
+# Usage : pip install -r requirements.txt
+
+# Layer 1 : DataLoader
+yfinance>=0.2.0
+
+# Tests
+pytest>=7.0.0
+
+# Packages nixpkgs réexposés dans le venv
+# (le venv activé ne voit pas les packages du pythonEnv nix par défaut)
+scipy>=1.10.0
+pyyaml>=6.0
+matplotlib>=3.7.0
+
+# DQF complet (optionnel — stub actif sans ce package)
+# mif-dqf

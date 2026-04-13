@@ -1,0 +1,1 @@
+"""\ncheck.py v2.0\n"""\n\ndef main():\n    """TODO: Implémenter check"""\n    pass\n

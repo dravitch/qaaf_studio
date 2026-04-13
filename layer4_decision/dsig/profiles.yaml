@@ -1,0 +1,40 @@
+# D-SIG v0.5 — Profils de pondération par famille de stratégies
+# Layer 4 QAAF Studio 3.0
+
+profiles:
+
+  default_strategy:
+    description: "Profil par défaut — stratégie QAAF sur paire croisée"
+    weights:
+      cnsr:      0.35
+      sortino:   0.20
+      calmar:    0.15
+      drawdown:  0.15
+      stability: 0.15
+    fail_fast:
+      paf_stop_cap:    20    # score ≤ 20 si PAF STOP
+      cnsr_min_cap:   -0.5   # score ≤ 20 si CNSR < -0.5
+      dd_max_cap:     40.0   # score ≤ 20 si max_dd > 40%
+      dsr_suspect_cap: 59   # score ≤ 59 si DSR < 0.80
+
+  passive_benchmark:
+    description: "Benchmark passif (B_5050, B_BTC, B_PAXG)"
+    weights:
+      cnsr:      0.40
+      sortino:   0.20
+      calmar:    0.10
+      drawdown:  0.20
+      stability: 0.10
+    fail_fast:
+      paf_stop_cap:    100   # benchmarks passifs ne passent pas par PAF
+      cnsr_min_cap:   -1.0
+      dd_max_cap:     60.0
+      dsr_suspect_cap: 100
+
+# Mapping score → statut KB
+score_to_kb_statut:
+  "85-100": "certifie"       # EXCELLENT — déploiement possible
+  "60-84":  "certifie"       # GOOD — monitoring recommandé
+  "35-59":  "en_cours"       # DEGRADED — investigation requise
+  "0-34":   "archive"        # CRITICAL — archiver
+  "dsr<0.80": "suspect_dsr"  # cap DSR — non déployable

@@ -1,0 +1,116 @@
+# QAAF Studio 3.0 — Knowledge Base : H9+EMA60j
+# Layer 4 : DÉCISION
+# Version : 1.0 | Avril 2026
+
+hypothese:
+  nom: "H9+EMA60j"
+  statut: "en_cours"
+  famille: "EMA_span_variants"
+  N_trials_famille: 101        # Grille 20j-120j inclusive
+
+  description: >
+    Signal H9 (rebalancement basé sur ratio PAXG/BTC) lissé par EMA 60j.
+    Mécanisme : réduction variance d'allocation 0.259 → 0.170
+    → moins de trades (132 → 47) → moins de frais (162 → 34 USD).
+    Gain de frais, pas d'alpha informationnel supplémentaire démontré.
+
+  split:
+    label:     "PAXG_BTC_config"
+    is_start:  "2020-06-01"
+    is_end:    "2023-05-31"
+    oos_start: "2023-06-01"
+    oos_end:   "2024-12-31"
+
+  paf:
+    D1: "HIERARCHIE_CONFIRMEE"
+    D1_notes: >
+      H9_lisse domine MR_pur, H9_brut, QAAF-R en OOS.
+      B_5050 (1.73) légèrement sous H9+EMA60j (1.76) — acceptable.
+    D2: "REGIMES_NEUTRES"
+    D2_notes: >
+      83-90% du temps en DRIFT. RESONANCE 0%. Filtres transparents.
+      Gain uniquement via lissage.
+    D3: "H9_LISSE_SUPERIEUR"
+    D3_notes: >
+      H9+EMA60j (1.76) > QAAF-R_sans_regime (1.05) à iso-variance.
+      PhaseCoherence dégrade — approximation MR déguisée en géométrie TJC.
+    date_paf: "2026-04-01"
+    sources:
+      - "paf_direction1_test_critique.py"
+      - "paf_direction2_paf1_regimes.py"
+      - "paf_direction3_h9_lisse.py"
+
+  metriques_is:
+    cnsr_usd_fed: 0.63
+    source: "paf_direction3_h9_lisse.py"
+
+  metriques_oos:
+    cnsr_usd_fed:  1.76
+    cnsr_usd_0:    null     # à recalculer avec MetricsEngine
+    sortino:       2.10
+    calmar:        0.94
+    omega:         null
+    max_dd_pct:    14.5
+    std_alloc:     0.170
+    n_trades:      47
+    fees_usd:      34
+    source: "paf_direction3_h9_lisse.py"
+
+  benchmarks_oos:
+    B_5050:
+      cnsr_usd_fed: 1.73
+      max_dd_pct:   13.0
+      n_trades:     19
+      fees_usd:     0
+    B_BTC:
+      cnsr_usd_fed: 1.53
+      max_dd_pct:   26.1
+    B_PAXG:
+      cnsr_usd_fed: null
+
+  metis:
+    Q1_walkforward:
+      statut:   "en_cours"
+      protocole: "5 fenêtres glissantes, split 70/30, CNSR-USD"
+      critere:   "CNSR > 0.5 sur ≥ 4/5 fenêtres"
+      resultat:  null
+      date:      null
+
+    Q2_permutation:
+      statut:   "en_cours"
+      protocole: "10 000 itérations, permutation signaux OOS vs B_5050"
+      critere:   "p-value < 0.05"
+      resultat:  null
+      p_value:   null
+      date:      null
+
+    Q3_stabilite_ema:
+      statut:   "en_cours"
+      protocole: "Grille 20j-120j sur IS uniquement"
+      critere:   "Plateau visible autour 60j, pas spike isolé"
+      resultat:  null
+      date:      null
+
+    Q4_dsr:
+      statut:     "en_cours"
+      protocole:  "DSR avec N=101 (grille complète)"
+      critere:    "DSR ≥ 0.95"
+      N_trials_utilise: 101
+      dsr_value:  null
+      resultat:   null
+      date:       null
+
+  verdict_final: null
+
+  historique:
+    - date:   "2026-04-01"
+      action: "PAF D1/D2/D3 complété"
+      auteur: "Andrei"
+    - date:   "2026-04-12"
+      action: "Entrée KB créée dans QAAF Studio 3.0"
+      auteur: "Claude (Sonnet 4.6)"
+
+  notes: >
+    OOS 2023-2024 est un bull market exceptionnel (B_5050 CNSR ≈ 1.73).
+    MÉTIS Q2 (permutation) isole ce qui vient de la règle vs du régime.
+    N_trials = 101 conservateur (grille complète 20j-120j inclusive).
