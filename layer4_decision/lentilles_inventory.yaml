@@ -1,0 +1,70 @@
+lentilles:
+  active: []
+  archivees:
+  - nom: H9_brut
+    famille: EMA_span_variants
+    statut: archive
+    cnsr_oos: 0.63
+    paf_verdict: HIERARCHIE_CONFIRMEE
+    raison: 'Signal brut sans lissage — 132 trades, 162 USD frais. Supplanté par H9+EMA60j
+      (moins de frais, CNSR supérieur).
+
+      '
+    date_archive: '2026-04-01'
+  - nom: QAAF-R_sans_regime
+    famille: EMA_span_variants
+    statut: archive
+    cnsr_oos: 1.05
+    paf_verdict: ARTEFACT_LISSAGE
+    raison: 'PAF D3 : PhaseCoherence dégrade — approximation MR déguisée en géométrie
+      TJC. Artefact de lissage confirmé. Solution minimale acceptée.
+
+      '
+    date_archive: '2026-04-01'
+  - nom: MR_pur
+    famille: EMA_span_variants
+    statut: archive
+    cnsr_oos: null
+    paf_verdict: STOP_PASSIF_DOMINE
+    raison: 'Signal mean-reversion pur sans lissage ni filtres. Dominé par benchmarks
+      passifs en PAF D1.
+
+      '
+    date_archive: '2026-03-15'
+  - nom: H9+EMA60j
+    cnsr_oos: 0.19
+    paf_verdict: H9_LISSE_SUPERIEUR
+    metis_verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+    dsig_score: 34
+  queue:
+  - nom: H9+filtre_bear_MA200
+    famille: EMA_span_variants
+    priorite: 2
+    description: 'H9+EMA60j avec filtre bear market (sous MA200 BTC). Hypothèse :
+      réduire l''exposition pendant les tendances baissières.
+
+      '
+    prerequis: Certification H9+EMA60j
+  - nom: H9_lisse_ETH_BTC
+    famille: transfert_multiasset
+    priorite: 3
+    description: 'Transfert de H9+EMA60j sur la paire ETH/BTC. Test de généralisation
+      inter-paires.
+
+      '
+    prerequis: Certification H9+EMA60j + MIF Phase 2
+  - nom: H9+EMA30j
+    famille: EMA_span_variants
+    priorite: 4
+    description: 'Variante EMA 30j — plus réactif, plus de trades. À tester uniquement
+      si N_trials le permet.
+
+      '
+    prerequis: Certification H9+EMA60j
+stats:
+  total_testees: 4
+  certifiees: 0
+  archivees: 3
+  en_cours: 1
+  queue: 3
+  date_maj: '2026-04-13'
