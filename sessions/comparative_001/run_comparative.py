@@ -29,6 +29,7 @@ from layer1_engine.data_loader       import DataLoader
 from layer1_engine.backtester        import Backtester
 from layer1_engine.split_manager     import SplitManager
 from layer1_engine.metrics_engine    import compute_cnsr, deflated_sharpe_ratio
+from layer1_engine.benchmark_factory import BenchmarkFactory
 from layer4_decision.dsig.mapper     import strategy_to_dsig
 from sessions.comparative_001.signals import SIGNAL_REGISTRY
 
@@ -74,16 +75,19 @@ def make_alloc_fn(signal_key: str, config: dict):
     return alloc_fn
 
 
-def run_backtest(name, config, prices_df, r_btc, backtester):
+def run_active_backtest(name, config, prices_df, r_btc, backtester):
+    """Pour les stratégies actives (H9_*). Retourne les métriques OOS calculées sur r_portfolio_usd."""
     alloc_fn = make_alloc_fn(config["signal"], config)
-    result   = backtester.run(alloc_fn, prices_df, r_btc)
-    metrics  = compute_cnsr(result["r_pair"], result["r_base_usd"])
-    metrics["name"]      = name
-    metrics["n_trades"]  = result["n_trades"]
+    result = backtester.run(alloc_fn, prices_df, r_btc)
+    # Correction : r_base_usd = 0 car r_portfolio_usd est déjà en USD
+    metrics = compute_cnsr(result["r_portfolio_usd"], pd.Series(0, index=result["r_portfolio_usd"].index))
+    metrics["name"] = name
+    metrics["n_trades"] = result["n_trades"]
     metrics["fees_paid"] = result["fees_paid"]
     metrics["std_alloc"] = result["std_alloc"]
-    metrics["r_pair"]    = result["r_pair"]
-    metrics["r_base_usd"]= result["r_base_usd"]
+    # Conserver les séries pour Q2 et Q4
+    metrics["r_pair"] = result["r_pair"]
+    metrics["r_base_usd"] = result["r_base_usd"]  # série de zéros
     metrics["r_portfolio_usd"] = result["r_portfolio_usd"]
     return metrics
 
@@ -99,11 +103,12 @@ def run_q1(name, config, prices_full, r_btc_full, n_windows=5):
         r_w   = r_btc_full.reindex(p_w.index).dropna()
         bt    = Backtester(CONFIG_PATH)
         try:
+            # Pour Q1 on peut utiliser la même logique corrigée
             alloc_fn = make_alloc_fn(config["signal"], config)
-            res   = bt.run(alloc_fn, p_w, r_w)
-            cnsr  = compute_cnsr(res["r_pair"], res["r_base_usd"])["cnsr_usd_fed"]
+            res = bt.run(alloc_fn, p_w, r_w)
+            cnsr = compute_cnsr(res["r_portfolio_usd"], pd.Series(0, index=res["r_portfolio_usd"].index))["cnsr_usd_fed"]
         except Exception:
-            cnsr  = np.nan
+            cnsr = np.nan
         passed = np.isfinite(cnsr) and cnsr >= Q1_CNSR_THRESHOLD
         results.append({
             "window": i + 1,
@@ -213,26 +218,60 @@ def main():
     prices_is, prices_oos = sm.apply_df(prices_full)
     r_btc_is,  r_btc_oos  = sm.apply(r_btc_usd)
 
-    bt = Backtester(config_path=CONFIG_PATH)
+    # Vérification que l'OOS est correct
+    print(f"🔍 IS  : {prices_is.index[0].date()} → {prices_is.index[-1].date()} ({len(prices_is)} jours)")
+    print(f"🔍 OOS : {prices_oos.index[0].date()} → {prices_oos.index[-1].date()} ({len(prices_oos)} jours)")
 
-    # B_5050 OOS pour Q2
-    b5050_res = run_backtest("B_5050", {"signal":"passive","alloc":0.50},
-                              prices_oos, r_btc_oos, bt)
+    bt = Backtester(config_path=CONFIG_PATH)
+    factory = BenchmarkFactory(bt)
+
+    # Benchmark B_5050 pour Q2 (pair returns) et debug
+    b5050_factory = factory.b_5050(prices_oos, r_btc_oos)
+    print(f"✅ Calibration B_5050 CNSR = {b5050_factory['cnsr_usd_fed']:.3f} (attendu ~1.34)\n")
+    # Pour Q2 on a besoin des séries brutes de la paire de B_5050
+    b5050_run = bt.run(lambda df: pd.Series(0.5, index=df.index), prices_oos, r_btc_oos)
+    r_pair_b5050 = b5050_run["r_pair"]
+    r_base_b5050 = b5050_run["r_base_usd"]  # série de zéros
 
     all_results = {}
 
     for name, config in LENTILLES.items():
         print(f"🔬 {name}...")
 
-        m = run_backtest(name, config, prices_oos, r_btc_oos, bt)
-        r_pair_oos    = m.pop("r_pair")
-        r_base_oos    = m.pop("r_base_usd")
-        r_port_oos    = m.pop("r_portfolio_usd")
-        r_usd_oos     = r_port_oos + r_base_oos.reindex(r_port_oos.index).fillna(0)
+        # Construire la fonction d'allocation
+        if name.startswith("B_"):
+            # Benchmarks passifs : allocation fixe
+            alloc_value = config.get("alloc", 0.5)  # B_5050:0.5, B_6040:0.6, B_BTC:0.0
+            def alloc_fn(df):
+                return pd.Series(alloc_value, index=df.index)
+        else:
+            # Stratégies actives
+            alloc_fn = make_alloc_fn(config["signal"], config)
+
+        # Exécuter le backtester
+        res = bt.run(alloc_fn, prices_oos, r_btc_oos)
+
+        # Calculer les métriques OOS sur r_portfolio_usd avec r_base=0
+        m = compute_cnsr(res["r_portfolio_usd"], pd.Series(0, index=res["r_portfolio_usd"].index))
+        m["name"] = name
+        m["n_trades"] = res["n_trades"]
+        m["fees_paid"] = res["fees_paid"]
+        m["std_alloc"] = res["std_alloc"]
+        m["r_pair"] = res["r_pair"]
+        m["r_base_usd"] = res["r_base_usd"]   # série de zéros
+        m["r_portfolio_usd"] = res["r_portfolio_usd"]
+
+        # Extraire les séries pour Q2 et Q4
+        r_pair_oos = m.pop("r_pair")
+        r_base_oos = m.pop("r_base_usd")
+        r_port_oos = m.pop("r_portfolio_usd")
+        r_usd_oos = r_port_oos   # déjà en USD
+
+        # ... reste identique
 
         q1 = run_q1(name, config, prices_full, r_btc_usd)
         q2 = ({"verdict":"SKIPPED"} if args.no_q2
-              else run_q2(r_pair_oos, r_base_oos, b5050_res["r_pair"]))
+              else run_q2(r_pair_oos, r_base_oos, r_pair_b5050, n_perm))
         q4 = run_q4(r_usd_oos.dropna(), N_TRIALS_FAMILY)
 
         verdict = compute_verdict(q1, q2, q4)
@@ -249,6 +288,7 @@ def main():
         }
         all_results[name] = result
 
+        # Sauvegarde checkpoint
         atomic_save(CHECKPOINT_DIR / f"{SESSION_ID}_checkpoint.yaml",
                     {"completed": list(all_results.keys()), "results": all_results})
 
