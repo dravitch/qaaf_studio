@@ -32,10 +32,10 @@ lentilles:
       '
     date_archive: '2026-03-15'
   - nom: H9+EMA60j
-    cnsr_oos: 0.19
+    cnsr_oos: 1.285
     paf_verdict: H9_LISSE_SUPERIEUR
     metis_verdict: ARCHIVE_FAIL_Q1_Q2_Q4
-    dsig_score: 34
+    dsig_score: 59
   queue:
   - nom: H9+filtre_bear_MA200
     famille: EMA_span_variants
