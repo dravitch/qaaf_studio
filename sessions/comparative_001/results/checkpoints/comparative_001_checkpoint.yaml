@@ -13,517 +13,517 @@ results:
       alloc: 0.5
       signal: passive
     dsig:
-      color: ORANGE
-      label: DEGRADED
-      score: 57
+      color: RED
+      label: CRITICAL
+      score: 0
       trend: STABLE
     name: B_5050
     oos_metrics:
-      calmar: 1.4769
-      cnsr_usd_0: 1.0468
-      cnsr_usd_fed: 0.7093
-      cnsr_usd_usdc: 0.7925
+      calmar: -0.5424
+      cnsr_usd_0: -1.0372
+      cnsr_usd_fed: -1.1343
+      cnsr_usd_usdc: -1.1104
       fees_paid: 0.0
-      max_dd_pct: 8.2446
+      max_dd_pct: 72.7096
       n_obs: 578
       n_trades: 0
-      omega: 1.2114
-      sortino: 1.0158
+      omega: 0.8275
+      sortino: -1.4479
       std_alloc: 0.0
     q1:
-      median_cnsr: -0.2504
-      n_pass: 1
+      median_cnsr: -0.1527
+      n_pass: 0
       n_total: 5
       verdict: FAIL
       windows:
-      - cnsr: 0.6082
+      - cnsr: -0.1527
         end: '2020-08-11'
-        pass: true
+        pass: false
         start: '2019-09-27'
         window: 1
-      - cnsr: -0.6673
+      - cnsr: -1.482
         end: '2021-06-27'
         pass: false
         start: '2020-08-12'
         window: 2
-      - cnsr: -0.2504
+      - cnsr: 0.1753
         end: '2022-05-13'
         pass: false
         start: '2021-06-28'
         window: 3
-      - cnsr: 0.2538
+      - cnsr: 0.1627
         end: '2023-03-29'
         pass: false
         start: '2022-05-14'
         window: 4
-      - cnsr: -0.3556
+      - cnsr: -1.4397
         end: '2024-02-12'
         pass: false
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: 0.7093
-      cnsr_obs: 0.7093
+      cnsr_bench: -1.1343
+      cnsr_obs: -1.1343
       n_perm: 500
-      perm_mean: 0.1446
-      pvalue: 0.0
-      verdict: PASS
+      perm_mean: -1.1343
+      pvalue: 0.942
+      verdict: FAIL
     q4:
-      dsr: 0.3865
+      dsr: 0.3812
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
   B_6040:
     config:
       alloc: 0.6
       signal: passive
     dsig:
-      color: ORANGE
-      label: DEGRADED
-      score: 57
+      color: RED
+      label: CRITICAL
+      score: 0
       trend: STABLE
     name: B_6040
     oos_metrics:
-      calmar: 1.4769
-      cnsr_usd_0: 1.0468
-      cnsr_usd_fed: 0.7093
-      cnsr_usd_usdc: 0.7925
+      calmar: -0.5424
+      cnsr_usd_0: -1.0372
+      cnsr_usd_fed: -1.1343
+      cnsr_usd_usdc: -1.1104
       fees_paid: 0.0
-      max_dd_pct: 8.2446
+      max_dd_pct: 72.7096
       n_obs: 578
       n_trades: 0
-      omega: 1.2114
-      sortino: 1.0158
+      omega: 0.8275
+      sortino: -1.4479
       std_alloc: 0.0
     q1:
-      median_cnsr: -0.2504
-      n_pass: 1
+      median_cnsr: -0.1527
+      n_pass: 0
       n_total: 5
       verdict: FAIL
       windows:
-      - cnsr: 0.6082
+      - cnsr: -0.1527
         end: '2020-08-11'
-        pass: true
+        pass: false
         start: '2019-09-27'
         window: 1
-      - cnsr: -0.6673
+      - cnsr: -1.482
         end: '2021-06-27'
         pass: false
         start: '2020-08-12'
         window: 2
-      - cnsr: -0.2504
+      - cnsr: 0.1753
         end: '2022-05-13'
         pass: false
         start: '2021-06-28'
         window: 3
-      - cnsr: 0.2538
+      - cnsr: 0.1627
         end: '2023-03-29'
         pass: false
         start: '2022-05-14'
         window: 4
-      - cnsr: -0.3556
+      - cnsr: -1.4397
         end: '2024-02-12'
         pass: false
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: 0.7093
-      cnsr_obs: 0.7093
+      cnsr_bench: -1.1343
+      cnsr_obs: -1.1343
       n_perm: 500
-      perm_mean: 0.1446
-      pvalue: 0.0
-      verdict: PASS
+      perm_mean: -1.1343
+      pvalue: 0.942
+      verdict: FAIL
     q4:
-      dsr: 0.3952
+      dsr: 0.3893
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
   B_BTC:
     config:
       alloc: 0.0
       signal: passive
     dsig:
-      color: ORANGE
-      label: DEGRADED
-      score: 57
+      color: RED
+      label: CRITICAL
+      score: 0
       trend: STABLE
     name: B_BTC
     oos_metrics:
-      calmar: 1.4769
-      cnsr_usd_0: 1.0468
-      cnsr_usd_fed: 0.7093
-      cnsr_usd_usdc: 0.7925
+      calmar: -0.5424
+      cnsr_usd_0: -1.0372
+      cnsr_usd_fed: -1.1343
+      cnsr_usd_usdc: -1.1104
       fees_paid: 0.0
-      max_dd_pct: 8.2446
+      max_dd_pct: 72.7096
       n_obs: 578
       n_trades: 0
-      omega: 1.2114
-      sortino: 1.0158
+      omega: 0.8275
+      sortino: -1.4479
       std_alloc: 0.0
     q1:
-      median_cnsr: -0.2504
-      n_pass: 1
+      median_cnsr: -0.1527
+      n_pass: 0
       n_total: 5
       verdict: FAIL
       windows:
-      - cnsr: 0.6082
+      - cnsr: -0.1527
         end: '2020-08-11'
-        pass: true
+        pass: false
         start: '2019-09-27'
         window: 1
-      - cnsr: -0.6673
+      - cnsr: -1.482
         end: '2021-06-27'
         pass: false
         start: '2020-08-12'
         window: 2
-      - cnsr: -0.2504
+      - cnsr: 0.1753
         end: '2022-05-13'
         pass: false
         start: '2021-06-28'
         window: 3
-      - cnsr: 0.2538
+      - cnsr: 0.1627
         end: '2023-03-29'
         pass: false
         start: '2022-05-14'
         window: 4
-      - cnsr: -0.3556
+      - cnsr: -1.4397
         end: '2024-02-12'
         pass: false
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: 0.7093
-      cnsr_obs: 0.7093
+      cnsr_bench: -1.1343
+      cnsr_obs: -1.1343
       n_perm: 500
-      perm_mean: 0.1446
-      pvalue: 0.0
-      verdict: PASS
+      perm_mean: -1.1343
+      pvalue: 0.942
+      verdict: FAIL
     q4:
-      dsr: 0.3514
+      dsr: 0.3242
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
   H9_EMA30j:
     config:
       signal: h9_ema
       span: 30
     dsig:
-      color: ORANGE
-      label: DEGRADED
-      score: 57
+      color: RED
+      label: CRITICAL
+      score: 0
       trend: STABLE
     name: H9_EMA30j
     oos_metrics:
-      calmar: 1.4769
-      cnsr_usd_0: 1.0468
-      cnsr_usd_fed: 0.7093
-      cnsr_usd_usdc: 0.7925
+      calmar: -0.5424
+      cnsr_usd_0: -1.0372
+      cnsr_usd_fed: -1.1343
+      cnsr_usd_usdc: -1.1104
       fees_paid: 81.2361
-      max_dd_pct: 8.2446
+      max_dd_pct: 72.7096
       n_obs: 578
       n_trades: 544
-      omega: 1.2114
-      sortino: 1.0158
+      omega: 0.8275
+      sortino: -1.4479
       std_alloc: 0.3205
     q1:
-      median_cnsr: -0.2504
-      n_pass: 1
+      median_cnsr: -0.1527
+      n_pass: 0
       n_total: 5
       verdict: FAIL
       windows:
-      - cnsr: 0.6082
+      - cnsr: -0.1527
         end: '2020-08-11'
-        pass: true
+        pass: false
         start: '2019-09-27'
         window: 1
-      - cnsr: -0.6673
+      - cnsr: -1.482
         end: '2021-06-27'
         pass: false
         start: '2020-08-12'
         window: 2
-      - cnsr: -0.2504
+      - cnsr: 0.1753
         end: '2022-05-13'
         pass: false
         start: '2021-06-28'
         window: 3
-      - cnsr: 0.2538
+      - cnsr: 0.1627
         end: '2023-03-29'
         pass: false
         start: '2022-05-14'
         window: 4
-      - cnsr: -0.3556
+      - cnsr: -1.4397
         end: '2024-02-12'
         pass: false
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: 0.7093
-      cnsr_obs: 0.7093
+      cnsr_bench: -1.1343
+      cnsr_obs: -1.1343
       n_perm: 500
-      perm_mean: 0.1446
-      pvalue: 0.0
-      verdict: PASS
+      perm_mean: -1.1343
+      pvalue: 0.942
+      verdict: FAIL
     q4:
-      dsr: 0.3858
+      dsr: 0.2498
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
   H9_EMA60_MA200:
     config:
       signal: h9_ema_ma200
       span: 60
     dsig:
-      color: ORANGE
-      label: DEGRADED
-      score: 57
+      color: RED
+      label: CRITICAL
+      score: 0
       trend: STABLE
     name: H9_EMA60_MA200
     oos_metrics:
-      calmar: 1.4769
-      cnsr_usd_0: 1.0468
-      cnsr_usd_fed: 0.7093
-      cnsr_usd_usdc: 0.7925
+      calmar: -0.5424
+      cnsr_usd_0: -1.0372
+      cnsr_usd_fed: -1.1343
+      cnsr_usd_usdc: -1.1104
       fees_paid: 46.8496
-      max_dd_pct: 8.2446
+      max_dd_pct: 72.7096
       n_obs: 578
       n_trades: 398
-      omega: 1.2114
-      sortino: 1.0158
+      omega: 0.8275
+      sortino: -1.4479
       std_alloc: 0.2963
     q1:
-      median_cnsr: -0.2504
-      n_pass: 1
+      median_cnsr: -0.1527
+      n_pass: 0
       n_total: 5
       verdict: FAIL
       windows:
-      - cnsr: 0.6082
+      - cnsr: -0.1527
         end: '2020-08-11'
-        pass: true
+        pass: false
         start: '2019-09-27'
         window: 1
-      - cnsr: -0.6673
+      - cnsr: -1.482
         end: '2021-06-27'
         pass: false
         start: '2020-08-12'
         window: 2
-      - cnsr: -0.2504
+      - cnsr: 0.1753
         end: '2022-05-13'
         pass: false
         start: '2021-06-28'
         window: 3
-      - cnsr: 0.2538
+      - cnsr: 0.1627
         end: '2023-03-29'
         pass: false
         start: '2022-05-14'
         window: 4
-      - cnsr: -0.3556
+      - cnsr: -1.4397
         end: '2024-02-12'
         pass: false
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: 0.7093
-      cnsr_obs: 0.7093
+      cnsr_bench: -1.1343
+      cnsr_obs: -1.1343
       n_perm: 500
-      perm_mean: 0.1446
-      pvalue: 0.0
-      verdict: PASS
+      perm_mean: -1.1343
+      pvalue: 0.942
+      verdict: FAIL
     q4:
-      dsr: 0.3728
+      dsr: 0.2588
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
   H9_EMA60j:
     config:
       signal: h9_ema
       span: 60
     dsig:
-      color: ORANGE
-      label: DEGRADED
-      score: 57
+      color: RED
+      label: CRITICAL
+      score: 0
       trend: STABLE
     name: H9_EMA60j
     oos_metrics:
-      calmar: 1.4769
-      cnsr_usd_0: 1.0468
-      cnsr_usd_fed: 0.7093
-      cnsr_usd_usdc: 0.7925
+      calmar: -0.5424
+      cnsr_usd_0: -1.0372
+      cnsr_usd_fed: -1.1343
+      cnsr_usd_usdc: -1.1104
       fees_paid: 56.649
-      max_dd_pct: 8.2446
+      max_dd_pct: 72.7096
       n_obs: 578
       n_trades: 545
-      omega: 1.2114
-      sortino: 1.0158
+      omega: 0.8275
+      sortino: -1.4479
       std_alloc: 0.2599
     q1:
-      median_cnsr: -0.2504
-      n_pass: 1
+      median_cnsr: -0.1527
+      n_pass: 0
       n_total: 5
       verdict: FAIL
       windows:
-      - cnsr: 0.6082
+      - cnsr: -0.1527
         end: '2020-08-11'
-        pass: true
+        pass: false
         start: '2019-09-27'
         window: 1
-      - cnsr: -0.6673
+      - cnsr: -1.482
         end: '2021-06-27'
         pass: false
         start: '2020-08-12'
         window: 2
-      - cnsr: -0.2504
+      - cnsr: 0.1753
         end: '2022-05-13'
         pass: false
         start: '2021-06-28'
         window: 3
-      - cnsr: 0.2538
+      - cnsr: 0.1627
         end: '2023-03-29'
         pass: false
         start: '2022-05-14'
         window: 4
-      - cnsr: -0.3556
+      - cnsr: -1.4397
         end: '2024-02-12'
         pass: false
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: 0.7093
-      cnsr_obs: 0.7093
+      cnsr_bench: -1.1343
+      cnsr_obs: -1.1343
       n_perm: 500
-      perm_mean: 0.1446
-      pvalue: 0.0
-      verdict: PASS
+      perm_mean: -1.1343
+      pvalue: 0.942
+      verdict: FAIL
     q4:
-      dsr: 0.4198
+      dsr: 0.3693
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
   H9_EMA90j:
     config:
       signal: h9_ema
       span: 90
     dsig:
-      color: ORANGE
-      label: DEGRADED
-      score: 57
+      color: RED
+      label: CRITICAL
+      score: 0
       trend: STABLE
     name: H9_EMA90j
     oos_metrics:
-      calmar: 1.4769
-      cnsr_usd_0: 1.0468
-      cnsr_usd_fed: 0.7093
-      cnsr_usd_usdc: 0.7925
+      calmar: -0.5424
+      cnsr_usd_0: -1.0372
+      cnsr_usd_fed: -1.1343
+      cnsr_usd_usdc: -1.1104
       fees_paid: 44.1987
-      max_dd_pct: 8.2446
+      max_dd_pct: 72.7096
       n_obs: 578
       n_trades: 545
-      omega: 1.2114
-      sortino: 1.0158
+      omega: 0.8275
+      sortino: -1.4479
       std_alloc: 0.2222
     q1:
-      median_cnsr: -0.2504
-      n_pass: 1
+      median_cnsr: -0.1527
+      n_pass: 0
       n_total: 5
       verdict: FAIL
       windows:
-      - cnsr: 0.6082
+      - cnsr: -0.1527
         end: '2020-08-11'
-        pass: true
+        pass: false
         start: '2019-09-27'
         window: 1
-      - cnsr: -0.6673
+      - cnsr: -1.482
         end: '2021-06-27'
         pass: false
         start: '2020-08-12'
         window: 2
-      - cnsr: -0.2504
+      - cnsr: 0.1753
         end: '2022-05-13'
         pass: false
         start: '2021-06-28'
         window: 3
-      - cnsr: 0.2538
+      - cnsr: 0.1627
         end: '2023-03-29'
         pass: false
         start: '2022-05-14'
         window: 4
-      - cnsr: -0.3556
+      - cnsr: -1.4397
         end: '2024-02-12'
         pass: false
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: 0.7093
-      cnsr_obs: 0.7093
+      cnsr_bench: -1.1343
+      cnsr_obs: -1.1343
       n_perm: 500
-      perm_mean: 0.1446
-      pvalue: 0.0
-      verdict: PASS
+      perm_mean: -1.1343
+      pvalue: 0.942
+      verdict: FAIL
     q4:
-      dsr: 0.4351
+      dsr: 0.4361
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
   H9_MA200:
     config:
       signal: h9_ma200_filter
     dsig:
-      color: ORANGE
-      label: DEGRADED
-      score: 57
+      color: RED
+      label: CRITICAL
+      score: 0
       trend: STABLE
     name: H9_MA200
     oos_metrics:
-      calmar: 1.4769
-      cnsr_usd_0: 1.0468
-      cnsr_usd_fed: 0.7093
-      cnsr_usd_usdc: 0.7925
+      calmar: -0.5424
+      cnsr_usd_0: -1.0372
+      cnsr_usd_fed: -1.1343
+      cnsr_usd_usdc: -1.1104
       fees_paid: 253.5387
-      max_dd_pct: 8.2446
+      max_dd_pct: 72.7096
       n_obs: 578
       n_trades: 185
-      omega: 1.2114
-      sortino: 1.0158
+      omega: 0.8275
+      sortino: -1.4479
       std_alloc: 0.4278
     q1:
-      median_cnsr: -0.2504
-      n_pass: 1
+      median_cnsr: -0.1527
+      n_pass: 0
       n_total: 5
       verdict: FAIL
       windows:
-      - cnsr: 0.6082
+      - cnsr: -0.1527
         end: '2020-08-11'
-        pass: true
+        pass: false
         start: '2019-09-27'
         window: 1
-      - cnsr: -0.6673
+      - cnsr: -1.482
         end: '2021-06-27'
         pass: false
         start: '2020-08-12'
         window: 2
-      - cnsr: -0.2504
+      - cnsr: 0.1753
         end: '2022-05-13'
         pass: false
         start: '2021-06-28'
         window: 3
-      - cnsr: 0.2538
+      - cnsr: 0.1627
         end: '2023-03-29'
         pass: false
         start: '2022-05-14'
         window: 4
-      - cnsr: -0.3556
+      - cnsr: -1.4397
         end: '2024-02-12'
         pass: false
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: 0.7093
-      cnsr_obs: 0.7093
+      cnsr_bench: -1.1343
+      cnsr_obs: -1.1343
       n_perm: 500
-      perm_mean: 0.1446
-      pvalue: 0.0
-      verdict: PASS
+      perm_mean: -1.1343
+      pvalue: 0.942
+      verdict: FAIL
     q4:
-      dsr: 0.2445
+      dsr: 0.0532
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
