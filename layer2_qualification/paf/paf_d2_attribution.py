@@ -57,18 +57,24 @@ def run_d2(
     else:
         verdict = "NEUTRE"
 
+    # Arrondir d'abord les CNSR, puis dériver delta pour garantir l'invariant :
+    # delta == cnsr_avec - cnsr_sans (à précision flottante près)
+    cnsr_avec_r = round(cnsr_avec, 4)
+    cnsr_sans_r = round(cnsr_sans, 4)
+    delta_r     = round(cnsr_avec_r - cnsr_sans_r, 4)
+
     return D2Result(
         verdict=verdict,
         composante=composante_name,
-        cnsr_avec=round(cnsr_avec, 4),
-        cnsr_sans=round(cnsr_sans, 4),
-        delta=round(delta, 4),
+        cnsr_avec=cnsr_avec_r,
+        cnsr_sans=cnsr_sans_r,
+        delta=delta_r,
         std_alloc_avec=round(std_avec, 4),
         std_alloc_sans=round(std_sans, 4),
         details={
             "cnsr_complet": cnsr_avec,
             "cnsr_sans":    cnsr_sans,
-            "delta":        delta,
+            "delta":        delta_r,
             "verdict":      verdict,
         }
     )

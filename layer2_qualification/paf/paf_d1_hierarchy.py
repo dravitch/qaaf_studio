@@ -80,7 +80,7 @@ def run_d1(
     delta_cand_ref = (cand_cnsr - ref_cnsr) if cand_cnsr is not None else None
 
     # Règle d'arrêt : B_passif domine tout
-    top_active = max(filter(None, [mr_cnsr, ref_cnsr, cand_cnsr]))
+    top_active = max(filter(lambda x: x is not None, [mr_cnsr, ref_cnsr, cand_cnsr]))
     if b5050 > top_active + 0.1:
         verdict = "B_PASSIF_DOMINE"
     elif delta_ref_mr < -0.05:

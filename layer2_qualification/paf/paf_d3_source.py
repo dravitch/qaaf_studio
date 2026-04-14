@@ -45,8 +45,7 @@ def _find_ema_span_matching_variance(
     q25 = log_ratio.rolling(60, min_periods=30).quantile(0.25)
     q75 = log_ratio.rolling(60, min_periods=30).quantile(0.75)
     iqr = (q75 - q25).replace(0, np.nan)
-    h9_raw = ((log_ratio - q25) / iqr).clip(0, 1)
-    h9_signal = 1.0 - h9_raw
+    h9_signal = 1.0 - ((log_ratio - q25) / iqr).clip(0, 1)
 
     best_span, best_std, best_fn = spans[0], float("inf"), None
     for span in spans:
