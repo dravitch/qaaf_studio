@@ -1,99 +1,115 @@
 """
-paf_d1_hierarchy.py — PAF Direction 1
-Layer 2 QAAF Studio 3.0
+PAF Direction 1 — Test critique de hiérarchie de signal.
 
-Compare MR_pur + signal_complet + benchmarks passifs.
-Produit une table CNSR-USD comparative immédiate.
-
-Verdict
--------
-HIERARCHIE_CONFIRMEE : signal actif surpasse MR_pur et CNSR > 0
-STOP_PASSIF_DOMINE   : benchmark passif domine tous les actifs → requalifier la paire
+Question : chaque couche de sophistication apporte-t-elle quelque chose ?
+Protocole : comparer MR_pur, signal_ref, signal_candidat, et benchmarks passifs
+            sur le même OOS, même moteur, même split.
 """
-
-from __future__ import annotations
-from typing import Dict, Optional
 
 import numpy as np
 import pandas as pd
+from dataclasses import dataclass
+from typing import Callable, Optional
 
-from layer1_engine.metrics_engine import compute_cnsr
+from layer1_engine.backtester        import Backtester
+from layer1_engine.benchmark_factory import BenchmarkFactory
+from layer1_engine.metrics_engine    import compute_cnsr
 
 
-class PAFDirection1:
-    def __init__(self, bundle, split_manager, rf_annual: float = 0.04):
-        self._b   = bundle
-        self._sm  = split_manager
-        self._rf  = rf_annual
+@dataclass
+class D1Result:
+    verdict: str           # HIERARCHIE_CONFIRMEE | B_PASSIF_DOMINE | STOP | PARTIELLE
+    mr_pur_cnsr:   float
+    signal_ref_cnsr: float
+    signal_candidat_cnsr: Optional[float]
+    b_5050_cnsr:   float
+    b_btc_cnsr:    float
+    delta_ref_vs_mr: float         # signal_ref - mr_pur
+    delta_candidat_vs_ref: float   # signal_candidat - signal_ref
+    details: dict
 
-        # Log-rendements IS pré-calculés
-        r_pair_full = np.log(self._b.paxg_btc / self._b.paxg_btc.shift(1)).dropna()
-        r_base_full = np.log(self._b.btc_usd  / self._b.btc_usd.shift(1)).dropna()
-        self._r_pair_is, _ = split_manager.apply(r_pair_full)
-        self._r_base_is, _ = split_manager.apply(r_base_full)
 
-    def run(
-        self,
-        strategies: Dict[str, pd.Series],
-        benchmarks: Optional[Dict[str, pd.Series]] = None,
-    ) -> dict:
-        """
-        Paramètres
-        ----------
-        strategies : {nom: allocations IS ∈ [0,1]} — inclure MR_pur + candidat
-        benchmarks : {nom: allocations IS} — B_5050, B_BTC, etc.
-        """
-        print(f"\n{'─'*55}")
-        print("PAF D1 — Hiérarchie de signal (IS)")
+def run_d1(
+    prices_oos: pd.DataFrame,
+    r_btc_oos: pd.Series,
+    signal_ref_fn: Callable,       # H9 ou équivalent
+    backtester: Backtester,
+    signal_candidat_fn: Optional[Callable] = None,
+    window: int = 60,
+) -> D1Result:
+    """
+    Exécute PAF Direction 1.
 
-        rows      = []
-        all_alloc = {**(strategies or {}), **(benchmarks or {})}
+    Paramètres
+    ----------
+    prices_oos        : DataFrame OOS avec colonnes 'paxg' et 'btc'
+    r_btc_oos         : log-rendements BTC/USD sur OOS
+    signal_ref_fn     : fonction d'allocation de référence (H9 typiquement)
+    backtester        : moteur unifié Layer 1
+    signal_candidat_fn: fonction d'allocation du signal candidat (optionnel)
+    window            : fenêtre pour MR_pur et signal_ref
+    """
+    factory = BenchmarkFactory(backtester)
 
-        for name, alloc in all_alloc.items():
-            r_port = self._portfolio_returns(alloc)
-            r_base = self._r_base_is.reindex(r_port.index).dropna()
-            r_port = r_port.reindex(r_base.index)
-            cnsr   = compute_cnsr(r_port, r_base, self._rf)
-            rows.append({
-                "strategie":    name,
-                "cnsr_usd_fed": cnsr["cnsr_usd_fed"],
-                "sortino":      cnsr["sortino"],
-                "max_dd_pct":   cnsr["max_dd_pct"],
-                "type":         "benchmark" if (benchmarks and name in benchmarks)
-                                else "active",
-            })
+    # ── MR_pur : mean-reversion minimal ──────────────────────────────────────
+    # Allocation proportionnelle à la distance du ratio à sa moyenne rolling
+    log_ratio = np.log(prices_oos["paxg"] / prices_oos["btc"])
+    mean_lr   = log_ratio.rolling(window, min_periods=window // 2).mean()
+    std_lr    = log_ratio.rolling(window, min_periods=window // 2).std()
+    z_score   = ((log_ratio - mean_lr) / std_lr.replace(0, np.nan)).fillna(0)
+    # Quand z < 0 (PAXG bas vs BTC), acheter PAXG → allocation haute
+    mr_alloc  = (0.5 - z_score.clip(-1, 1) * 0.3).clip(0, 1)
 
-        table = (
-            pd.DataFrame(rows)
-            .set_index("strategie")
-            .sort_values("cnsr_usd_fed", ascending=False)
-        )
+    def mr_pur_fn(df): return mr_alloc.reindex(df.index).fillna(0.5)
 
-        print("\nTable CNSR-USD comparative (IS) :")
-        print(table[["cnsr_usd_fed", "sortino", "max_dd_pct", "type"]].round(3).to_string())
+    # ── Backtests ─────────────────────────────────────────────────────────────
+    def _cnsr(alloc_fn) -> float:
+        result = backtester.run(alloc_fn, prices_oos, r_btc_oos)
+        zero = pd.Series(0.0, index=result["r_portfolio_usd"].index)
+        return compute_cnsr(result["r_portfolio_usd"], zero)["cnsr_usd_fed"]
 
-        # Verdict
-        bench_names  = list(benchmarks.keys()) if benchmarks else []
-        active_names = [n for n in all_alloc if n not in bench_names]
-        candidate    = [n for n in active_names if n != "MR_pur"]
+    mr_cnsr  = _cnsr(mr_pur_fn)
+    ref_cnsr = _cnsr(signal_ref_fn)
+    cand_cnsr = _cnsr(signal_candidat_fn) if signal_candidat_fn else None
 
-        best_bench  = table.loc[bench_names,  "cnsr_usd_fed"].max() if bench_names  else -np.inf
-        best_active = table.loc[candidate,    "cnsr_usd_fed"].max() if candidate    else -np.inf
+    b5050 = factory.b_5050(prices_oos, r_btc_oos)["cnsr_usd_fed"]
+    b_btc = factory.b_btc(prices_oos,  r_btc_oos)["cnsr_usd_fed"]
 
-        if best_bench > best_active and best_active < 0.5:
-            verdict = "STOP_PASSIF_DOMINE"
-            notes   = (f"B_passif ({best_bench:.3f}) > actif ({best_active:.3f}). "
-                       "Requalifier la paire.")
-        else:
+    # ── Verdict ───────────────────────────────────────────────────────────────
+    delta_ref_mr   = ref_cnsr - mr_cnsr
+    delta_cand_ref = (cand_cnsr - ref_cnsr) if cand_cnsr is not None else None
+
+    # Règle d'arrêt : B_passif domine tout
+    top_active = max(filter(None, [mr_cnsr, ref_cnsr, cand_cnsr]))
+    if b5050 > top_active + 0.1:
+        verdict = "B_PASSIF_DOMINE"
+    elif delta_ref_mr < -0.05:
+        verdict = "STOP"  # Signal_ref pire que MR_pur
+    elif cand_cnsr is not None and delta_cand_ref is not None:
+        if delta_ref_mr >= -0.05 and delta_cand_ref >= -0.05:
             verdict = "HIERARCHIE_CONFIRMEE"
-            notes   = f"Meilleur actif CNSR-USD IS = {best_active:.3f}."
+        elif delta_ref_mr >= -0.05:
+            verdict = "PARTIELLE"  # H9 OK mais candidat n'améliore pas
+        else:
+            verdict = "STOP"
+    else:
+        # Pas de signal candidat — tester juste MR vs ref
+        verdict = "HIERARCHIE_CONFIRMEE" if delta_ref_mr >= 0 else "STOP"
 
-        emoji = "✅" if verdict == "HIERARCHIE_CONFIRMEE" else "🔴"
-        print(f"\n{emoji} VERDICT D1 : {verdict}\n   {notes}")
-
-        return {"verdict": verdict, "notes": notes, "table": table}
-
-    def _portfolio_returns(self, alloc: pd.Series) -> pd.Series:
-        r_pair = self._r_pair_is
-        common = r_pair.index.intersection(alloc.index)
-        return (alloc.reindex(common).ffill() * r_pair.loc[common]).dropna()
+    return D1Result(
+        verdict=verdict,
+        mr_pur_cnsr=round(mr_cnsr, 4),
+        signal_ref_cnsr=round(ref_cnsr, 4),
+        signal_candidat_cnsr=round(cand_cnsr, 4) if cand_cnsr else None,
+        b_5050_cnsr=round(b5050, 4),
+        b_btc_cnsr=round(b_btc, 4),
+        delta_ref_vs_mr=round(delta_ref_mr, 4),
+        delta_candidat_vs_ref=round(delta_cand_ref, 4) if delta_cand_ref else None,
+        details={
+            "mr_pur":   mr_cnsr,
+            "signal_ref": ref_cnsr,
+            "signal_candidat": cand_cnsr,
+            "b_5050":   b5050,
+            "b_btc":    b_btc,
+        }
+    )
