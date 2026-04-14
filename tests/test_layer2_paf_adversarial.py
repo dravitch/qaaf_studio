@@ -69,7 +69,11 @@ def test_no_lookahead_bias(synthetic_oos, backtester):
 
     r_pair_raw = np.log(prices["paxg"] / prices["btc"]).diff()
 
-    lookahead_alloc = (r_pair_raw > 0).astype(float).fillna(0.5)
+    # Oracle basé sur le rendement FUTUR (shift(-1)) : après le shift(1) interne
+    # du backtester, ce signal devient le rendement du jour même → oracle parfait,
+    # quel que soit le régime de marché.
+    r_pair_future = r_pair_raw.shift(-1).fillna(0)
+    lookahead_alloc = (r_pair_future > 0).astype(float).fillna(0.5)
     honest_alloc = lookahead_alloc.shift(1).fillna(0.5)
 
     def lookahead_fn(df): return lookahead_alloc.reindex(df.index).fillna(0.5)
