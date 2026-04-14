@@ -53,17 +53,12 @@ results:
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: -1.1343
-      cnsr_obs: -1.1343
-      n_perm: 500
-      perm_mean: -1.1343
-      pvalue: 0.942
-      verdict: FAIL
+      verdict: SKIPPED
     q4:
       dsr: 0.3812
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q4
   B_6040:
     config:
       alloc: 0.6
@@ -118,17 +113,12 @@ results:
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: -1.1343
-      cnsr_obs: -1.1343
-      n_perm: 500
-      perm_mean: -1.1343
-      pvalue: 0.942
-      verdict: FAIL
+      verdict: SKIPPED
     q4:
       dsr: 0.3893
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q4
   B_BTC:
     config:
       alloc: 0.0
@@ -183,17 +173,12 @@ results:
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: -1.1343
-      cnsr_obs: -1.1343
-      n_perm: 500
-      perm_mean: -1.1343
-      pvalue: 0.942
-      verdict: FAIL
+      verdict: SKIPPED
     q4:
       dsr: 0.3242
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q4
   H9_EMA30j:
     config:
       signal: h9_ema
@@ -248,17 +233,12 @@ results:
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: -1.1343
-      cnsr_obs: -1.1343
-      n_perm: 500
-      perm_mean: -1.1343
-      pvalue: 0.942
-      verdict: FAIL
+      verdict: SKIPPED
     q4:
       dsr: 0.2498
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q4
   H9_EMA60_MA200:
     config:
       signal: h9_ema_ma200
@@ -313,17 +293,12 @@ results:
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: -1.1343
-      cnsr_obs: -1.1343
-      n_perm: 500
-      perm_mean: -1.1343
-      pvalue: 0.942
-      verdict: FAIL
+      verdict: SKIPPED
     q4:
       dsr: 0.2588
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q4
   H9_EMA60j:
     config:
       signal: h9_ema
@@ -378,17 +353,12 @@ results:
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: -1.1343
-      cnsr_obs: -1.1343
-      n_perm: 500
-      perm_mean: -1.1343
-      pvalue: 0.942
-      verdict: FAIL
+      verdict: SKIPPED
     q4:
       dsr: 0.3693
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q4
   H9_EMA90j:
     config:
       signal: h9_ema
@@ -443,17 +413,12 @@ results:
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: -1.1343
-      cnsr_obs: -1.1343
-      n_perm: 500
-      perm_mean: -1.1343
-      pvalue: 0.942
-      verdict: FAIL
+      verdict: SKIPPED
     q4:
       dsr: 0.4361
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q4
   H9_MA200:
     config:
       signal: h9_ma200_filter
@@ -507,16 +472,11 @@ results:
         start: '2023-03-30'
         window: 5
     q2:
-      cnsr_bench: -1.1343
-      cnsr_obs: -1.1343
-      n_perm: 500
-      perm_mean: -1.1343
-      pvalue: 0.942
-      verdict: FAIL
+      verdict: SKIPPED
     q4:
       dsr: 0.0532
       n_trials: 101
       verdict: FAIL
-    verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+    verdict: ARCHIVE_FAIL_Q1_Q4
 session: comparative_001
-timestamp: '20260414_010654'
+timestamp: '20260414_013301'
