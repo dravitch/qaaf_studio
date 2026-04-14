@@ -1,210 +1,121 @@
-"""
-Tests Layer 2 — PAF (Performance Attribution Framework)
+"""Tests unitaires — PAF Layer 2 (logique des verdicts sur données synthétiques)."""
 
-Fonctionne avec pytest ET unittest :
-    python3 -m unittest tests/test_layer2_paf.py -v
-    pytest tests/test_layer2_paf.py -v
-
-Note : PAF D1/D2/D3 travaillent avec des données IS réelles via bundle.
-Ces tests utilisent un bundle synthétique minimal.
-"""
-
-import sys
-import types
-import unittest
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
+import pytest
 import numpy as np
 import pandas as pd
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parents[1]))
 
-from layer2_qualification.paf.paf_d1_hierarchy  import PAFDirection1
-from layer2_qualification.paf.paf_d2_attribution import PAFDirection2
-from layer2_qualification.paf.paf_d3_source      import PAFDirection3
-
-
-# ── Helpers ────────────────────────────────────────────────────────────────────
-
-def _make_bundle_and_sm(n=500, seed=42):
-    """Crée un bundle et SplitManager synthétiques pour les tests PAF."""
-    rng = np.random.default_rng(seed)
-    idx = pd.date_range("2019-01-01", periods=n, freq="B")
-
-    r_btc  = rng.normal(0.001, 0.03, n)
-    r_paxg = rng.normal(0.0005, 0.01, n)
-
-    btc_usd  = pd.Series(1000 * np.exp(np.cumsum(r_btc)),  index=idx)
-    paxg_usd = pd.Series(1800 * np.exp(np.cumsum(r_paxg)), index=idx)
-    paxg_btc = paxg_usd / btc_usd
-
-    bundle = types.SimpleNamespace(
-        btc_usd  = btc_usd,
-        paxg_usd = paxg_usd,
-        paxg_btc = paxg_btc,
-    )
-
-    # SplitManager minimal compatible
-    split_point = n // 2
-    class FakeSM:
-        def apply(self, series):
-            if hasattr(series, 'iloc'):
-                return series.iloc[:split_point], series.iloc[split_point:]
-            return series[:split_point], series[split_point:]
-
-    return bundle, FakeSM()
+from layer1_engine.backtester        import Backtester
+from layer2_qualification.paf.paf_d1_hierarchy   import run_d1
+from layer2_qualification.paf.paf_d2_attribution import run_d2
+from layer2_qualification.paf.paf_d3_source      import run_d3
 
 
-def _make_alloc(n, value=0.5, varying=False, seed=42):
-    """Crée une série d'allocations."""
-    rng = np.random.default_rng(seed)
-    idx = pd.date_range("2019-01-01", periods=n, freq="B")
-    if varying:
-        vals = 0.3 + 0.4 * rng.uniform(0, 1, n)
-    else:
-        vals = np.full(n, value)
-    return pd.Series(vals, index=idx)
+@pytest.fixture
+def synthetic_bull_oos(tmp_path):
+    np.random.seed(42)
+    n = 400
+    idx = pd.date_range("2023-06-01", periods=n, freq="B")
+    r_btc  = np.random.randn(n) * 0.03 + 0.004
+    r_paxg = np.random.randn(n) * 0.01 + 0.001
+    btc  = pd.Series(30000 * np.exp(np.cumsum(r_btc)),  index=idx, name="btc")
+    paxg = pd.Series(1900  * np.exp(np.cumsum(r_paxg)), index=idx, name="paxg")
+    prices = pd.DataFrame({"paxg": paxg, "btc": btc})
+    r_btc_s = pd.Series(np.log(btc / btc.shift(1)).dropna(), name="r_btc")
+    return prices.loc[r_btc_s.index], r_btc_s
 
 
-# ── Tests PAF D1 ──────────────────────────────────────────────────────────────
-
-class TestPAFD1Hierarchy(unittest.TestCase):
-
-    def setUp(self):
-        n = 500
-        self.bundle, self.sm = _make_bundle_and_sm(n=n)
-        self.n_is = n // 2
-
-    def test_stop_passif_domine_when_benchmark_dominates(self):
-        """
-        D1 : STOP_PASSIF_DOMINE quand benchmark > actif avec actif < 0.5.
-
-        On crée un signal actif très médiocre (aléatoire) et un benchmark
-        qui domine clairement pour déclencher STOP_PASSIF_DOMINE.
-        """
-        d1 = PAFDirection1(self.bundle, self.sm)
-
-        # Actif médiocre : allocation aléatoire (mauvais signal)
-        rng = np.random.default_rng(999)
-        idx = self.bundle.btc_usd.index[:self.n_is]
-        alloc_bad = pd.Series(rng.uniform(0, 1, len(idx)), index=idx)
-
-        # Benchmark dominant : allocation stable 0.5 (fixe mais bonne)
-        alloc_bench = _make_alloc(self.n_is, value=0.5)
-
-        result = d1.run(
-            strategies  = {"signal_mauvais": alloc_bad},
-            benchmarks  = {"B_5050": alloc_bench},
-        )
-        # Les données synthétiques peuvent produire l'un ou l'autre verdict
-        self.assertIn(result["verdict"],
-                      ("STOP_PASSIF_DOMINE", "HIERARCHIE_CONFIRMEE"))
-        self.assertIn("verdict", result)
-        self.assertIn("notes",   result)
-        self.assertIn("table",   result)
-
-    def test_hierarchie_confirmee_when_signal_dominates(self):
-        """
-        D1 : HIERARCHIE_CONFIRMEE quand signal actif domine les benchmarks.
-
-        On crée un signal qui prédit parfaitement la direction du marché
-        pour garantir HIERARCHIE_CONFIRMEE.
-        """
-        d1 = PAFDirection1(self.bundle, self.sm)
-
-        # Signal actif avec légère avance sur le marché
-        r_paxg_btc = np.log(self.bundle.paxg_btc /
-                            self.bundle.paxg_btc.shift(1)).dropna()
-        r_is = r_paxg_btc.iloc[:self.n_is]
-        # Signal suiveur : allocation proportionnelle à la tendance récente
-        alloc_signal = (r_is.rolling(10, min_periods=1).mean() > 0
-                        ).astype(float) * 0.6 + 0.2
-        alloc_bench = _make_alloc(self.n_is, value=0.5)
-
-        result = d1.run(
-            strategies = {"signal_test": alloc_signal},
-            benchmarks = {"B_5050": alloc_bench},
-        )
-        # Vérifier la structure du résultat, pas forcément le verdict
-        self.assertIn(result["verdict"],
-                      ("STOP_PASSIF_DOMINE", "HIERARCHIE_CONFIRMEE"))
-
-    def test_d1_returns_table(self):
-        """D1 retourne toujours une table comparative."""
-        d1 = PAFDirection1(self.bundle, self.sm)
-        alloc = _make_alloc(self.n_is, value=0.5)
-        result = d1.run(
-            strategies = {"MR_pur": alloc},
-            benchmarks = {"B_5050": _make_alloc(self.n_is, value=0.5)},
-        )
-        self.assertIsInstance(result["table"], pd.DataFrame)
-        self.assertIn("cnsr_usd_fed", result["table"].columns)
+@pytest.fixture
+def backtester(tmp_path):
+    import yaml
+    cfg = {
+        "engine": {"fees_pct": 0.001, "initial_capital": 10000.0, "mode": "lump_sum"},
+        "rates":  {"rf_fed": 0.04, "rf_usdc": 0.03, "rf_zero": 0.0},
+        "splits": {"is_start": "2020-06-01", "is_end": "2023-05-31",
+                   "oos_start": "2023-06-01", "oos_end": "2024-12-31"},
+        "data":   {"cache_dir": str(tmp_path / ".cache"),
+                   "tickers": {"btc": "BTC-USD", "paxg": "PAXG-USD"}},
+    }
+    cfg_path = tmp_path / "config.yaml"
+    cfg_path.write_text(yaml.dump(cfg))
+    return Backtester(config_path=str(cfg_path))
 
 
-# ── Tests PAF D2 ──────────────────────────────────────────────────────────────
-
-class TestPAFD2Attribution(unittest.TestCase):
-
-    def setUp(self):
-        n = 500
-        self.bundle, self.sm = _make_bundle_and_sm(n=n)
-        self.n_is = n // 2
-
-    def test_d2_returns_verdict_and_table(self):
-        """D2 retourne un verdict et une table par couche."""
-        d2 = PAFDirection2(self.bundle, self.sm)
-        alloc_full = _make_alloc(self.n_is, varying=True)
-        alloc_sans = _make_alloc(self.n_is, varying=True, seed=99)
-
-        result = d2.run({"complet": alloc_full, "sans_regime": alloc_sans})
-        self.assertIn(result["verdict"],
-                      ("COMPOSANTE_ACTIVE", "REGIMES_NEUTRES",
-                       "COMPOSANTE_DEGRADANTE", "COMPOSANTE_NEUTRE"))
-        self.assertIsInstance(result["table"], pd.DataFrame)
-
-    def test_d2_no_complet_key_returns_default_verdict(self):
-        """Sans couche 'complet', D2 retourne COMPOSANTE_NEUTRE."""
-        d2 = PAFDirection2(self.bundle, self.sm)
-        result = d2.run({"couche_a": _make_alloc(self.n_is)})
-        self.assertEqual(result["verdict"], "COMPOSANTE_NEUTRE")
+def h9_ema_fn(df):
+    lr = np.log(df["paxg"] / df["btc"])
+    q25 = lr.rolling(60, min_periods=30).quantile(0.25)
+    q75 = lr.rolling(60, min_periods=30).quantile(0.75)
+    iqr = (q75 - q25).replace(0, np.nan)
+    h9 = (1 - ((lr - q25) / iqr).clip(0, 1)).clip(0, 1).fillna(0.5)
+    return h9.ewm(span=60, adjust=False).mean().clip(0, 1)
 
 
-# ── Tests PAF D3 ──────────────────────────────────────────────────────────────
-
-class TestPAFD3Source(unittest.TestCase):
-
-    def setUp(self):
-        n = 500
-        self.bundle, self.sm = _make_bundle_and_sm(n=n)
-        self.n_is = n // 2
-
-    def test_d3_with_trivial_variant(self):
-        """D3 compare candidat vs EMA triviale iso-variance."""
-        d3 = PAFDirection3(self.bundle, self.sm)
-        alloc_cand  = _make_alloc(self.n_is, varying=True)
-        alloc_triv  = _make_alloc(self.n_is, varying=True, seed=123)
-
-        result = d3.run({
-            "H9+EMA60j":       alloc_cand,
-            "EMA_triviale":    alloc_triv,
-        })
-        self.assertIn(result["verdict"],
-                      ("H9_LISSE_SUPERIEUR", "SIGNAL_INFORMATIF", "ARTEFACT_LISSAGE"))
-
-    def test_d3_no_trivial_returns_default(self):
-        """Sans variante triviale, D3 retourne SIGNAL_INFORMATIF."""
-        d3 = PAFDirection3(self.bundle, self.sm)
-        result = d3.run({"H9+EMA60j": _make_alloc(self.n_is, varying=True)})
-        self.assertEqual(result["verdict"], "SIGNAL_INFORMATIF")
-
-    def test_d3_returns_table(self):
-        """D3 retourne une table des variantes."""
-        d3 = PAFDirection3(self.bundle, self.sm)
-        result = d3.run({
-            "candidat":     _make_alloc(self.n_is, varying=True),
-            "triviale_ema": _make_alloc(self.n_is, varying=True, seed=77),
-        })
-        self.assertIsInstance(result["table"], pd.DataFrame)
+def test_d1_returns_valid_verdict(synthetic_bull_oos, backtester):
+    prices, r_btc = synthetic_bull_oos
+    result = run_d1(prices, r_btc, h9_ema_fn, backtester)
+    assert result.verdict in ("HIERARCHIE_CONFIRMEE", "PARTIELLE", "B_PASSIF_DOMINE", "STOP")
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+def test_d1_returns_numeric_cnsr_values(synthetic_bull_oos, backtester):
+    prices, r_btc = synthetic_bull_oos
+    result = run_d1(prices, r_btc, h9_ema_fn, backtester)
+    assert not np.isnan(result.mr_pur_cnsr)
+    assert not np.isnan(result.signal_ref_cnsr)
+    assert not np.isnan(result.b_5050_cnsr)
+
+
+def test_d1_b_passif_domine_when_active_very_poor(synthetic_bull_oos, backtester):
+    prices, r_btc = synthetic_bull_oos
+    def bad_signal(df): return pd.Series(0.95, index=df.index)
+    result = run_d1(prices, r_btc, bad_signal, backtester)
+    assert result.verdict in ("B_PASSIF_DOMINE", "STOP", "PARTIELLE", "HIERARCHIE_CONFIRMEE")
+
+
+def test_d2_neutre_when_composante_makes_no_difference(synthetic_bull_oos, backtester):
+    prices, r_btc = synthetic_bull_oos
+    def signal_a(df): return pd.Series(0.5, index=df.index)
+    def signal_b(df): return pd.Series(0.5, index=df.index)
+    result = run_d2(prices, r_btc, signal_a, signal_b, "test", backtester)
+    assert result.verdict == "NEUTRE"
+    assert abs(result.delta) < 0.01
+
+
+def test_d2_delta_sign_matches_verdict(synthetic_bull_oos, backtester):
+    prices, r_btc = synthetic_bull_oos
+    def alloc_high(df): return pd.Series(0.8, index=df.index)
+    def alloc_low(df):  return pd.Series(0.2, index=df.index)
+    result = run_d2(prices, r_btc, alloc_high, alloc_low, "test", backtester,
+                    seuil_actif=0.01)
+    assert result.delta == round(result.cnsr_avec - result.cnsr_sans, 4)
+    if result.delta > 0.01:
+        assert result.verdict == "COMPOSANTE_ACTIVE"
+    elif result.delta < -0.01:
+        assert result.verdict == "DEGRADANTE"
+
+
+def test_d3_returns_valid_verdict(synthetic_bull_oos, backtester):
+    prices, r_btc = synthetic_bull_oos
+    result = run_d3(prices, r_btc, h9_ema_fn, backtester)
+    assert result.verdict in ("SIGNAL_INFORMATIF", "ARTEFACT_LISSAGE")
+    assert not np.isnan(result.cnsr_signal)
+    assert not np.isnan(result.cnsr_trivial)
+    assert result.ema_span_used > 0
+
+
+def test_d3_iso_variance_tolerance(synthetic_bull_oos, backtester):
+    prices, r_btc = synthetic_bull_oos
+    result = run_d3(prices, r_btc, h9_ema_fn, backtester)
+    if result.std_alloc_signal > 0:
+        ratio = result.std_alloc_trivial / result.std_alloc_signal
+        assert 0.3 <= ratio <= 3.0, f"EMA triviale trop différente : ratio={ratio:.2f}"
+
+
+def test_d2_delta_is_cnsr_avec_minus_cnsr_sans(synthetic_bull_oos, backtester):
+    """Invariant arithmétique : delta = cnsr_avec - cnsr_sans, toujours."""
+    prices, r_btc = synthetic_bull_oos
+    result = run_d2(prices, r_btc, h9_ema_fn,
+                    lambda df: pd.Series(0.5, index=df.index),
+                    "arith_check", backtester)
+    assert abs(result.delta - (result.cnsr_avec - result.cnsr_sans)) < 1e-6

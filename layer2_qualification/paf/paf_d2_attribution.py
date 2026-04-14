@@ -1,105 +1,80 @@
 """
-paf_d2_attribution.py — PAF Direction 2
-Layer 2 QAAF Studio 3.0
+PAF Direction 2 — Attribution de performance.
 
-Isole chaque couche du signal. Compare signal_complet vs signal_sans_X.
-
-Verdict
--------
-COMPOSANTE_ACTIVE    : retirer X dégrade CNSR ≥ 0.10 → X apporte de l'info
-REGIMES_NEUTRES      : delta < 0.10 dans les deux sens → lissage seulement
-COMPOSANTE_DEGRADANTE: retirer X améliore CNSR ≥ 0.10 → X nuit au signal
+Question : quelle composante du signal explique la performance observée en D1 ?
+Protocole : signal_complet vs signal_sans_composante_X, à allocation comparable.
 """
 
-from __future__ import annotations
-from typing import Dict
-
-import numpy as np
 import pandas as pd
+import numpy as np
+from dataclasses import dataclass
+from typing import Callable, Dict
 
+from layer1_engine.backtester     import Backtester
 from layer1_engine.metrics_engine import compute_cnsr
 
 
-class PAFDirection2:
-    def __init__(self, bundle, split_manager, rf_annual: float = 0.04):
-        self._b  = bundle
-        self._sm = split_manager
-        self._rf = rf_annual
+@dataclass
+class D2Result:
+    verdict: str              # COMPOSANTE_ACTIVE | NEUTRE | DEGRADANTE
+    composante: str
+    cnsr_avec:  float         # signal complet
+    cnsr_sans:  float         # signal sans la composante
+    delta:      float         # cnsr_avec - cnsr_sans
+    std_alloc_avec: float
+    std_alloc_sans: float
+    details: dict
 
-        r_pair_full = np.log(self._b.paxg_btc / self._b.paxg_btc.shift(1)).dropna()
-        r_base_full = np.log(self._b.btc_usd  / self._b.btc_usd.shift(1)).dropna()
-        self._r_pair_is, _ = split_manager.apply(r_pair_full)
-        self._r_base_is, _ = split_manager.apply(r_base_full)
 
-    def run(self, layers: Dict[str, pd.Series]) -> dict:
-        """
-        Paramètres
-        ----------
-        layers : {nom: allocations IS}
-                 Convention : inclure "complet" + variantes sans couche X.
-                 Ex. {"complet": alloc_full, "sans_regime": alloc_no_regime}
-        """
-        print(f"\n{'─'*55}")
-        print("PAF D2 — Attribution de performance (IS)")
+def run_d2(
+    prices_oos: pd.DataFrame,
+    r_btc_oos: pd.Series,
+    signal_complet_fn: Callable,
+    signal_sans_fn: Callable,
+    composante_name: str,
+    backtester: Backtester,
+    seuil_actif: float = 0.05,
+) -> D2Result:
+    """
+    Exécute PAF Direction 2 pour une composante donnée.
 
-        rows = []
-        for name, alloc in layers.items():
-            r_port = self._portfolio_returns(alloc)
-            r_base = self._r_base_is.reindex(r_port.index).dropna()
-            r_port = r_port.reindex(r_base.index)
-            cnsr   = compute_cnsr(r_port, r_base, self._rf)
-            rows.append({
-                "couche":       name,
-                "cnsr_usd_fed": cnsr["cnsr_usd_fed"],
-                "sortino":      cnsr["sortino"],
-                "std_alloc":    float(alloc.std()),
-            })
+    Répéter pour chaque composante à tester (régimes, PhaseCoherence, etc.)
+    """
+    def _run(alloc_fn):
+        result = backtester.run(alloc_fn, prices_oos, r_btc_oos)
+        zero = pd.Series(0.0, index=result["r_portfolio_usd"].index)
+        metrics = compute_cnsr(result["r_portfolio_usd"], zero)
+        return metrics["cnsr_usd_fed"], result["std_alloc"]
 
-        table = (
-            pd.DataFrame(rows)
-            .set_index("couche")
-            .sort_values("cnsr_usd_fed", ascending=False)
-        )
+    cnsr_avec,  std_avec = _run(signal_complet_fn)
+    cnsr_sans, std_sans  = _run(signal_sans_fn)
+    delta = cnsr_avec - cnsr_sans
 
-        print("\nTable comparative par couche (IS) :")
-        print(table.round(3).to_string())
+    if delta > seuil_actif:
+        verdict = "COMPOSANTE_ACTIVE"
+    elif delta < -seuil_actif:
+        verdict = "DEGRADANTE"
+    else:
+        verdict = "NEUTRE"
 
-        # Verdict : comparer "complet" vs chaque variante sans X
-        verdict = "COMPOSANTE_NEUTRE"
-        notes   = "Pas de couche 'complet' fournie — verdict par défaut."
+    # Arrondir d'abord les CNSR, puis dériver delta pour garantir l'invariant :
+    # delta == cnsr_avec - cnsr_sans (à précision flottante près)
+    cnsr_avec_r = round(cnsr_avec, 4)
+    cnsr_sans_r = round(cnsr_sans, 4)
+    delta_r     = round(cnsr_avec_r - cnsr_sans_r, 4)
 
-        if "complet" in layers:
-            cnsr_c   = table.loc["complet", "cnsr_usd_fed"]
-            variants = {k: table.loc[k, "cnsr_usd_fed"]
-                        for k in table.index if k != "complet"}
-            if variants:
-                best_without = max(variants.values())
-                delta        = best_without - cnsr_c  # positif → retirer améliore
-
-                if delta >= 0.10:
-                    worst_layer = max(variants, key=variants.get)
-                    verdict = "COMPOSANTE_DEGRADANTE"
-                    notes   = (f"'{worst_layer}' dégrade le signal (retirer améliore "
-                               f"+{delta:.3f}). Vérifier PhaseCoherence.")
-                elif delta <= -0.10:
-                    verdict = "COMPOSANTE_ACTIVE"
-                    notes   = f"Retirer une couche dégrade de {abs(delta):.3f}. Signal informatif."
-                else:
-                    verdict = "REGIMES_NEUTRES"
-                    notes   = (f"Delta max = {delta:.3f} — toutes les couches sont "
-                               "neutres. Source = lissage uniquement.")
-
-        emoji_map = {
-            "COMPOSANTE_ACTIVE":     "✅",
-            "REGIMES_NEUTRES":       "⚠️",
-            "COMPOSANTE_DEGRADANTE": "🔴",
-            "COMPOSANTE_NEUTRE":     "⚠️",
+    return D2Result(
+        verdict=verdict,
+        composante=composante_name,
+        cnsr_avec=cnsr_avec_r,
+        cnsr_sans=cnsr_sans_r,
+        delta=delta_r,
+        std_alloc_avec=round(std_avec, 4),
+        std_alloc_sans=round(std_sans, 4),
+        details={
+            "cnsr_complet": cnsr_avec,
+            "cnsr_sans":    cnsr_sans,
+            "delta":        delta_r,
+            "verdict":      verdict,
         }
-        print(f"\n{emoji_map.get(verdict,'❓')} VERDICT D2 : {verdict}\n   {notes}")
-
-        return {"verdict": verdict, "notes": notes, "table": table}
-
-    def _portfolio_returns(self, alloc: pd.Series) -> pd.Series:
-        r_pair = self._r_pair_is
-        common = r_pair.index.intersection(alloc.index)
-        return (alloc.reindex(common).ffill() * r_pair.loc[common]).dropna()
+    )
