@@ -1,88 +1,61 @@
 """
-metis_q4_dsr.py — MÉTIS Q4
-Layer 3 QAAF Studio 3.0
+MÉTIS Q4 — DSR (Deflated Sharpe Ratio).
 
-Deflated Sharpe Ratio — protection contre le multiple testing.
-N_trials alimenté automatiquement par SplitManager.
-
-Critère : DSR ≥ 0.95.
-Si DSR < 0.95 : stratégie marquée SUSPECT_DSR — non archivée,
-mais non déployable sans investigation supplémentaire.
-
-Note : un DSR < 0.95 n'est pas un échec définitif. Il peut être réévalué
-si N_trials diminue ou si de nouvelles données OOS deviennent disponibles.
+Protocole : calculer le DSR avec N_trials = nombre de variantes
+            testées dans la même famille de stratégies.
+Critère   : DSR ≥ 0.95 pour PASS, 0.80–0.95 pour SUSPECT_DSR.
+Justification : sans correction pour le nombre d'essais, un CNSR
+                élevé peut simplement refléter du cherry-picking.
 """
-
-from __future__ import annotations
-from dataclasses import dataclass
-from typing import Callable
 
 import numpy as np
 import pandas as pd
+from dataclasses import dataclass
 
-from layer1_engine.metrics_engine import deflated_sharpe_ratio, compute_cnsr
-
-DSR_THRESHOLD = 0.95
+from layer1_engine.metrics_engine import deflated_sharpe_ratio
 
 
 @dataclass
-class DSRResult:
-    passed:    bool
-    dsr:       float
-    n_trials:  int
-    cnsr_oos:  float
-    status:    str    # "PASS" | "SUSPECT_DSR"
-    notes:     str
+class Q4Result:
+    verdict:     str    # PASS | SUSPECT_DSR | FAIL
+    dsr:         float
+    n_trials:    int
+    cnsr_oos:    float
+    threshold:   float  # seuil PASS (0.95)
+    threshold_suspect: float  # seuil SUSPECT (0.80)
 
 
 def run_q4(
-    strategy_fn:  Callable[[pd.Series, dict], pd.Series],
-    params:       dict,
-    r_pair_oos:   pd.Series,
-    r_base_oos:   pd.Series,
-    n_trials:     int,
-    rf_annual:    float = 0.04,
-) -> DSRResult:
+    r_portfolio_usd: pd.Series,
+    cnsr_oos: float,
+    n_trials: int,
+    rf_annual: float = 0.04,
+    threshold: float = 0.95,
+    threshold_suspect: float = 0.80,
+) -> Q4Result:
     """
-    Calcule le DSR sur la période OOS avec N_trials fourni par SplitManager.
+    Calcule le DSR et rend un verdict.
 
-    Paramètres
-    ----------
-    n_trials : compteur cumulatif de la famille (ex. 101 pour EMA_span_variants)
+    n_trials : nombre total de variantes testées dans la famille.
+               Pour la famille EMA_span_variants (grille 20-120j) : 101.
+               Pour une hypothèse isolée : 1.
     """
-    print(f"\n📊 MÉTIS Q4 — DSR (N_trials={n_trials}, seuil ≥ {DSR_THRESHOLD}) ...")
+    dsr = deflated_sharpe_ratio(r_portfolio_usd, n_trials, rf_annual)
 
-    try:
-        alloc_oos = strategy_fn(r_pair_oos, params)
-        common    = r_pair_oos.index.intersection(alloc_oos.index)
-        r_port    = alloc_oos.reindex(common).ffill() * r_pair_oos.loc[common]
-        r_base_c  = r_base_oos.reindex(common)
+    if np.isnan(dsr):
+        verdict = "FAIL"
+    elif dsr >= threshold:
+        verdict = "PASS"
+    elif dsr >= threshold_suspect:
+        verdict = "SUSPECT_DSR"
+    else:
+        verdict = "FAIL"
 
-        cnsr_oos = compute_cnsr(r_port, r_base_c, rf_annual)["cnsr_usd_fed"]
-        r_usd    = r_port + r_base_c
-        dsr      = deflated_sharpe_ratio(r_usd.dropna(), n_trials, rf_annual)
-    except Exception as e:
-        notes = f"Exception : {e}"
-        return DSRResult(False, np.nan, n_trials, np.nan, "ERROR", notes)
-
-    passed = np.isfinite(dsr) and dsr >= DSR_THRESHOLD
-    status = "PASS" if passed else "SUSPECT_DSR"
-    notes  = (f"DSR={dsr:.4f} | N_trials={n_trials} | "
-              f"CNSR_OOS={cnsr_oos:.3f} | seuil={DSR_THRESHOLD}")
-
-    emoji = "✅" if passed else "⚠️"
-    print(f"  {emoji} Q4 : {notes}")
-
-    if not passed:
-        print(f"    ⚠️  Stratégie marquée {status}.")
-        print(f"    Non déployable en l'état.")
-        print(f"    Réévaluer si N_trials ↓ ou si T (données OOS) ↑.")
-
-    return DSRResult(
-        passed=passed,
-        dsr=float(dsr) if np.isfinite(dsr) else np.nan,
-        n_trials=n_trials,
-        cnsr_oos=float(cnsr_oos) if np.isfinite(cnsr_oos) else np.nan,
-        status=status,
-        notes=notes,
+    return Q4Result(
+        verdict           = verdict,
+        dsr               = round(float(dsr), 4) if not np.isnan(dsr) else None,
+        n_trials          = n_trials,
+        cnsr_oos          = round(float(cnsr_oos), 4),
+        threshold         = threshold,
+        threshold_suspect = threshold_suspect,
     )

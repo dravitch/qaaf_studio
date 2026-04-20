@@ -1,111 +1,122 @@
 """
-metis_q2_permutation.py — MÉTIS Q2
-Layer 3 QAAF Studio 3.0
+MÉTIS Q2 — Test de permutation (significativité statistique).
 
-Test de permutation : significativité statistique vs B_5050.
-10 000 itérations, permutation des signaux d'allocation OOS.
-Métrique : CNSR-USD (pas Sharpe paire brute).
-
-Critère : p-value < 0.05.
+Protocole : permuter les allocations OOS 10 000 fois, calculer le CNSR
+            sur chaque permutation, calculer la p-value.
+Critère   : p-value < 0.05.
 Justification : le bull run 2023-2024 gonfle tous les Sharpe.
-La permutation isole ce qui vient de la règle, pas du régime de marché.
-"""
+                La permutation isole ce qui vient de la règle, pas du marché.
 
-from __future__ import annotations
-from dataclasses import dataclass
-from typing import Callable
+Checkpoint : sauvegarde tous les 500 itérations (pour reprendre si interruption).
+"""
 
 import numpy as np
 import pandas as pd
+import shutil
+import yaml
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable, Optional
 
+from layer1_engine.backtester     import Backtester
 from layer1_engine.metrics_engine import compute_cnsr
-
-N_PERMUTATIONS = 10_000
-PVALUE_MAX     = 0.05
 
 
 @dataclass
-class PermutationResult:
-    passed:    bool
-    p_value:   float
-    cnsr_obs:  float
-    cnsr_bench: float
-    perm_mean: float
-    perm_std:  float
-    notes:     str
+class Q2Result:
+    verdict:      str    # PASS | FAIL
+    pvalue:       float
+    cnsr_obs:     float  # CNSR observé du signal
+    cnsr_bench:   float  # CNSR B_5050 (référence)
+    perm_mean:    float  # CNSR moyen des permutations
+    n_perm:       int    # nombre de permutations effectuées
+    pvalue_threshold: float
+
+
+def _atomic_save(path: Path, data: dict):
+    """Sauvegarde atomique POSIX (pattern LP)."""
+    tmp = path.with_suffix(".tmp")
+    with open(tmp, "w") as f:
+        yaml.safe_dump(data, f)
+    shutil.move(str(tmp), str(path))
 
 
 def run_q2(
-    strategy_fn:  Callable[[pd.Series, dict], pd.Series],
-    params:       dict,
-    r_pair_oos:   pd.Series,
-    r_base_oos:   pd.Series,
-    rf_annual:    float = 0.04,
-    n_perm:       int   = N_PERMUTATIONS,
-) -> PermutationResult:
+    prices_oos: pd.DataFrame,
+    r_btc_oos: pd.Series,
+    allocation_fn: Callable,
+    backtester: Backtester,
+    n_perm: int = 10000,
+    pvalue_threshold: float = 0.05,
+    checkpoint_path: Optional[Path] = None,
+    checkpoint_interval: int = 500,
+    seed: int = 42,
+) -> Q2Result:
     """
-    Exécute le test de permutation sur la période OOS.
+    Exécute le test de permutation avec reprise depuis checkpoint.
 
-    Paramètres
-    ----------
-    n_perm : nombre de permutations (défaut 10 000, réduire à 500 pour tests)
+    Pour n_perm=500 (mode --fast), durée ~30s.
+    Pour n_perm=10000 (mode complet), durée ~10min selon machine.
     """
-    print(f"\n📊 MÉTIS Q2 — Permutation ({n_perm:,} itérations, "
-          f"p-value < {PVALUE_MAX}) ...")
+    np.random.seed(seed)
 
-    # Stratégie observée
-    try:
-        alloc_oos = strategy_fn(r_pair_oos, params)
-        common    = r_pair_oos.index.intersection(alloc_oos.index)
-        r_port    = alloc_oos.reindex(common).ffill() * r_pair_oos.loc[common]
-        cnsr_obs  = compute_cnsr(r_port, r_base_oos.reindex(common),
-                                 rf_annual)["cnsr_usd_fed"]
-    except Exception as e:
-        notes = f"Exception stratégie : {e}"
-        return PermutationResult(False, np.nan, np.nan, np.nan, np.nan, np.nan, notes)
+    # CNSR observé
+    result_obs = backtester.run(allocation_fn, prices_oos, r_btc_oos)
+    zero_obs   = pd.Series(0.0, index=result_obs["r_portfolio_usd"].index)
+    cnsr_obs   = compute_cnsr(result_obs["r_portfolio_usd"], zero_obs)["cnsr_usd_fed"]
 
-    # Benchmark B_5050
-    r_bench    = 0.5 * r_pair_oos.loc[common]
-    cnsr_bench = compute_cnsr(r_bench, r_base_oos.reindex(common),
-                               rf_annual)["cnsr_usd_fed"]
+    # CNSR B_5050 (référence)
+    from layer1_engine.benchmark_factory import BenchmarkFactory
+    factory    = BenchmarkFactory(backtester)
+    cnsr_bench = factory.b_5050(prices_oos, r_btc_oos)["cnsr_usd_fed"]
 
-    print(f"    CNSR observé = {cnsr_obs:.4f} | CNSR B_5050 = {cnsr_bench:.4f}")
-    print(f"    Permutation de {n_perm:,} signaux OOS ...")
+    # Séries pour la permutation
+    r_pair_arr  = result_obs["r_portfolio_usd"].values
+    r_base_arr  = pd.Series(0.0, index=result_obs["r_portfolio_usd"].index)
 
-    # Distribution nulle — permuter les allocations
-    rng          = np.random.default_rng(42)
-    alloc_arr    = alloc_oos.reindex(common).ffill().values
-    r_pair_arr   = r_pair_oos.loc[common].values
-    r_base_arr   = r_base_oos.reindex(common).values
-    perm_cnsrs   = []
-
-    for _ in range(n_perm):
-        perm_a = rng.permutation(alloc_arr)
-        r_p    = pd.Series(perm_a * r_pair_arr)
-        r_b    = pd.Series(r_base_arr)
+    # Reprendre depuis checkpoint si disponible
+    start_idx   = 0
+    perm_cnsrs  = []
+    if checkpoint_path and checkpoint_path.exists():
         try:
-            c = compute_cnsr(r_p, r_b, rf_annual)["cnsr_usd_fed"]
-            if np.isfinite(c):
-                perm_cnsrs.append(c)
+            cp = yaml.safe_load(checkpoint_path.read_text())
+            start_idx  = cp.get("completed", 0)
+            perm_cnsrs = cp.get("perm_cnsrs", [])
         except Exception:
             pass
 
-    perm_arr  = np.array(perm_cnsrs)
-    p_value   = float(np.mean(perm_arr >= cnsr_obs)) if len(perm_arr) > 0 else np.nan
-    passed    = np.isfinite(p_value) and p_value < PVALUE_MAX
+    # Boucle de permutation
+    for i in range(start_idx, n_perm):
+        perm = np.random.permutation(r_pair_arr)
+        r_perm = pd.Series(perm, index=result_obs["r_portfolio_usd"].index)
+        try:
+            m = compute_cnsr(r_perm, r_base_arr)
+            c = m["cnsr_usd_fed"]
+            if not np.isnan(c):
+                perm_cnsrs.append(float(c))
+        except Exception:
+            pass
 
-    notes = (f"p-value={p_value:.4f} | CNSR_obs={cnsr_obs:.3f} | "
-             f"bench={cnsr_bench:.3f} | perm_mean={perm_arr.mean():.3f}")
+        if checkpoint_path and (i + 1) % checkpoint_interval == 0:
+            _atomic_save(checkpoint_path, {
+                "completed":  i + 1,
+                "total":      n_perm,
+                "perm_cnsrs": perm_cnsrs,
+            })
+            import pandas as _pd
+            _pd.Series(perm_cnsrs).to_csv(
+                checkpoint_path.with_suffix(".csv"), index=False
+            )
 
-    emoji = "✅" if passed else "🔴"
-    print(f"  {emoji} Q2 : {notes}")
+    pvalue    = float(np.mean(np.array(perm_cnsrs) >= cnsr_obs)) if perm_cnsrs else 1.0
+    perm_mean = float(np.mean(perm_cnsrs)) if perm_cnsrs else float("nan")
 
-    return PermutationResult(
-        passed    = passed,
-        p_value   = p_value,
-        cnsr_obs  = float(cnsr_obs),
-        cnsr_bench= float(cnsr_bench),
-        perm_mean = float(perm_arr.mean()),
-        perm_std  = float(perm_arr.std()),
-        notes     = notes,
+    return Q2Result(
+        verdict          = "PASS" if pvalue < pvalue_threshold else "FAIL",
+        pvalue           = round(pvalue, 4),
+        cnsr_obs         = round(float(cnsr_obs), 4),
+        cnsr_bench       = round(float(cnsr_bench), 4),
+        perm_mean        = round(perm_mean, 4) if not np.isnan(perm_mean) else None,
+        n_perm           = len(perm_cnsrs),
+        pvalue_threshold = pvalue_threshold,
     )

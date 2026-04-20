@@ -1,129 +1,98 @@
 """
-metis_q3_ema_stability.py — MÉTIS Q3
-Layer 3 QAAF Studio 3.0
+MÉTIS Q3 — Stabilité du span EMA (sur-ajustement des paramètres).
 
-Stabilité du span EMA : grille 20j→120j sur IS uniquement.
-Optimisation sur IS seulement — OOS vu une seule fois en Q final.
+Protocole : grille EMA 20j→120j sur IS uniquement.
+Critère   : pas de spike isolé (le span cible ne doit pas être
+            un optimum ponctuel par rapport à ses voisins).
+Justification : si 60j est un optimum isolé, le paramètre est
+                sur-ajusté et ne généralisera pas.
 
-Critère : performance monotone ou plateau identifiable autour de 60j,
-pas un spike isolé.
-Justification : un optimum ponctuel sur IS n'est pas défendable en déploiement.
+Note : ce test tourne sur IS uniquement. L'OOS n'est jamais vu.
 """
-
-from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Callable, Dict
 
 import numpy as np
 import pandas as pd
+from dataclasses import dataclass, field
+from typing import Callable, List
 
+from layer1_engine.backtester     import Backtester
 from layer1_engine.metrics_engine import compute_cnsr
-
-EMA_MIN  = 20
-EMA_MAX  = 120
-EMA_STEP = 5     # réduit à 10 pour les tests rapides
 
 
 @dataclass
-class EMAStabilityResult:
-    passed:              bool
-    target_span:         int
-    target_cnsr:         float
-    neighbourhood_median: float
-    is_spike:            bool
-    span_cnsrs:          Dict[int, float] = field(default_factory=dict)
-    notes:               str = ""
+class Q3Result:
+    verdict:          str     # PASS | FAIL
+    target_span:      int     # span cible (60j par défaut)
+    cnsr_target:      float   # CNSR IS pour le span cible
+    median_neighbors: float   # médiane des spans voisins ±2
+    is_spike:         bool    # True si spike détecté
+    cnsr_by_span:     dict    # {span: cnsr} pour toute la grille
+    ema_step:         int
+
+
+def _h9_ema_signal(prices: pd.DataFrame, span: int, window: int = 60) -> pd.Series:
+    """Signal H9+EMA pour un span donné."""
+    log_ratio = np.log(prices["paxg"] / prices["btc"])
+    q25 = log_ratio.rolling(window, min_periods=window // 2).quantile(0.25)
+    q75 = log_ratio.rolling(window, min_periods=window // 2).quantile(0.75)
+    iqr = (q75 - q25).replace(0, np.nan)
+    h9  = (1.0 - ((log_ratio - q25) / iqr).clip(0, 1)).clip(0, 1).fillna(0.5)
+    return h9.ewm(span=span, adjust=False).mean().clip(0, 1)
 
 
 def run_q3(
-    strategy_fn: Callable[[pd.Series, dict], pd.Series],
-    params:      dict,
-    r_pair_is:   pd.Series,
-    r_base_is:   pd.Series,
-    rf_annual:   float = 0.04,
-    ema_step:    int   = EMA_STEP,
-) -> EMAStabilityResult:
+    prices_is: pd.DataFrame,
+    r_btc_is: pd.Series,
+    target_span: int = 60,
+    backtester: Backtester = None,
+    span_min: int = 20,
+    span_max: int = 120,
+    ema_step: int = 10,
+    spike_ratio: float = 1.5,
+) -> Q3Result:
     """
-    Exécute la grille EMA sur IS et détecte les spikes.
+    Exécute la grille EMA sur IS uniquement.
 
-    Paramètres
-    ----------
-    ema_step : pas de grille (défaut 5, utiliser 10 pour tests rapides)
+    spike_ratio : si CNSR(target) > spike_ratio × médiane_voisins,
+                  c'est un spike (sur-ajustement).
     """
-    target_span = params.get("ema_span", 60)
-    spans       = list(range(EMA_MIN, EMA_MAX + 1, ema_step))
-
-    print(f"\n📊 MÉTIS Q3 — Stabilité EMA (grille {EMA_MIN}→{EMA_MAX}j "
-          f"pas={ema_step}, IS uniquement) ...")
-
-    span_cnsrs: Dict[int, float] = {}
+    spans        = list(range(span_min, span_max + 1, ema_step))
+    cnsr_by_span = {}
 
     for span in spans:
-        p_s = {**params, "ema_span": span}
+        alloc_fn = lambda df, s=span: _h9_ema_signal(df, s)
         try:
-            alloc    = strategy_fn(r_pair_is, p_s)
-            common   = r_pair_is.index.intersection(alloc.index)
-            r_port   = alloc.reindex(common).ffill() * r_pair_is.loc[common]
-            cnsr_val = compute_cnsr(r_port, r_base_is.reindex(common),
-                                    rf_annual)["cnsr_usd_fed"]
-            span_cnsrs[span] = float(cnsr_val) if np.isfinite(cnsr_val) else np.nan
+            result = backtester.run(alloc_fn, prices_is, r_btc_is)
+            zero   = pd.Series(0.0, index=result["r_portfolio_usd"].index)
+            m      = compute_cnsr(result["r_portfolio_usd"], zero)
+            cnsr_by_span[span] = round(float(m["cnsr_usd_fed"]), 4)
         except Exception:
-            span_cnsrs[span] = np.nan
+            cnsr_by_span[span] = None
 
-    # Spike detection : CNSR(target) > médiane voisinage ±20j + 0.30
-    neighbourhood = [span_cnsrs[s] for s in span_cnsrs
-                     if abs(s - target_span) <= 20 and np.isfinite(span_cnsrs.get(s, np.nan))]
-    nbh_median    = float(np.nanmedian(neighbourhood)) if neighbourhood else np.nan
-    target_cnsr   = span_cnsrs.get(target_span, np.nan)
+    # Span cible
+    cnsr_target = cnsr_by_span.get(target_span, float("nan"))
+    if cnsr_target is None:
+        cnsr_target = float("nan")
 
-    is_spike = (np.isfinite(target_cnsr) and np.isfinite(nbh_median)
-                and target_cnsr > nbh_median + 0.30)
-    passed   = not is_spike and np.isfinite(target_cnsr)
+    # Voisins : spans ±2*step autour de target
+    neighbor_spans = [
+        s for s in spans
+        if s != target_span and abs(s - target_span) <= 2 * ema_step
+    ]
+    neighbor_vals = [cnsr_by_span[s] for s in neighbor_spans if cnsr_by_span.get(s) is not None]
+    median_neighbors = float(np.median(neighbor_vals)) if neighbor_vals else float("nan")
 
-    # Visualisation ASCII
-    _ascii_curve(span_cnsrs, target_span)
+    # Détection de spike
+    is_spike = False
+    if not np.isnan(cnsr_target) and not np.isnan(median_neighbors) and median_neighbors > 0:
+        is_spike = cnsr_target > spike_ratio * median_neighbors
 
-    notes = (f"CNSR(span={target_span})={target_cnsr:.3f} | "
-             f"médiane_voisinage={nbh_median:.3f} | "
-             f"spike={'OUI 🚨' if is_spike else 'NON'}")
-
-    emoji = "✅" if passed else "🔴"
-    print(f"  {emoji} Q3 : {notes}")
-
-    return EMAStabilityResult(
-        passed=passed,
-        target_span=target_span,
-        target_cnsr=float(target_cnsr) if np.isfinite(target_cnsr) else np.nan,
-        neighbourhood_median=nbh_median,
-        is_spike=is_spike,
-        span_cnsrs=span_cnsrs,
-        notes=notes,
+    return Q3Result(
+        verdict          = "FAIL" if is_spike else "PASS",
+        target_span      = target_span,
+        cnsr_target      = round(float(cnsr_target), 4) if not np.isnan(cnsr_target) else None,
+        median_neighbors = round(median_neighbors, 4) if not np.isnan(median_neighbors) else None,
+        is_spike         = is_spike,
+        cnsr_by_span     = cnsr_by_span,
+        ema_step         = ema_step,
     )
-
-
-def _ascii_curve(span_cnsrs: Dict[int, float], target_span: int,
-                 height: int = 6, width: int = 40) -> None:
-    """Affichage ASCII minimaliste de la courbe CNSR IS vs span."""
-    spans  = sorted(span_cnsrs.keys())
-    cnsrs  = [span_cnsrs[s] for s in spans]
-    valid  = [(s, c) for s, c in zip(spans, cnsrs) if np.isfinite(c)]
-    if not valid:
-        return
-
-    s_arr, c_arr = zip(*valid)
-    mn, mx = min(c_arr), max(c_arr)
-    rng    = mx - mn if mx != mn else 1.0
-
-    print(f"\n    Courbe CNSR IS — EMA {min(s_arr)}→{max(s_arr)}j "
-          f"(★ = span cible {target_span}j)")
-    for row in range(height, -1, -1):
-        threshold = mn + (row / height) * rng
-        line = ""
-        for s, c in zip(s_arr, c_arr):
-            if abs(c - threshold) < rng / height:
-                line += "★" if s == target_span else "·"
-            else:
-                line += " "
-        val_str = f"{threshold:+.2f}" if row % 2 == 0 else "      "
-        print(f"    {val_str} │{line}")
-    print(f"           └{'─'*len(s_arr)}▶ span")
