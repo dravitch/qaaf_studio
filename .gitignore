@@ -67,6 +67,10 @@ build/
 secrets.yaml
 secrets.yml
 
+# ── Scripts de diagnostic locaux ─────────────────────────────────────────────
+check_imports.py
+debug_*.py
+
 # ── Fichiers temporaires ──────────────────────────────────────────────────────
 *.tmp
 *.bak

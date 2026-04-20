@@ -1,187 +1,213 @@
 """
-metis_runner.py — MÉTIS v2.1 Layer 3 QAAF Studio 3.0
+METISRunner — Orchestre Q1→Q2→Q3→Q4 avec règles d'arrêt.
 
-Orchestre Q1 → Q2 → Q3 → Q4.
-Métrique de référence : CNSR-USD sur toutes les questions.
-
-Ce que MÉTIS ne fait PAS : générer de nouvelles hypothèses.
-Si toutes les questions échouent, on remonte en Layer 2 avec une hypothèse différente.
+Usage standard :
+    runner = METISRunner(config_path="config.yaml")
+    report = runner.run(allocation_fn, n_perm=500)
+    print(report.verdict_global)
 """
-
-from __future__ import annotations
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
+import yaml
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Callable, Optional
 
-from layer3_validation.metis_q1_walkforward import run_q1, WalkForwardResult
-from layer3_validation.metis_q2_permutation  import run_q2, PermutationResult
-from layer3_validation.metis_q3_ema_stability import run_q3, EMAStabilityResult
-from layer3_validation.metis_q4_dsr          import run_q4, DSRResult
+from layer1_engine.data_loader    import DataLoader
+from layer1_engine.backtester     import Backtester
+from layer1_engine.split_manager  import SplitManager
+from layer1_engine.benchmark_factory import BenchmarkFactory
+from layer1_engine.metrics_engine import compute_cnsr
+
+from layer3_validation.metis_q1_walkforward   import run_q1, Q1Result
+from layer3_validation.metis_q2_permutation   import run_q2, Q2Result
+from layer3_validation.metis_q3_ema_stability import run_q3, Q3Result
+from layer3_validation.metis_q4_dsr           import run_q4, Q4Result
 
 
 @dataclass
 class METISReport:
-    hypothesis: str
-    q1: Optional[WalkForwardResult]  = None
-    q2: Optional[PermutationResult]  = None
-    q3: Optional[EMAStabilityResult] = None
-    q4: Optional[DSRResult]          = None
+    verdict_global: str          # CERTIFIE | SUSPECT_DSR | ARCHIVE_FAIL_Q*
+    q1: Optional[Q1Result] = None
+    q2: Optional[Q2Result] = None
+    q3: Optional[Q3Result] = None
+    q4: Optional[Q4Result] = None
+    cnsr_oos: Optional[float] = None
+    notes: list = field(default_factory=list)
 
-    def verdict(self) -> str:
-        qs = [q for q in [self.q1, self.q2, self.q3, self.q4] if q is not None]
-        if not qs:
-            return "EN_COURS"
-        if all(q.passed for q in qs):
-            return "CERTIFIE"
-        # DSR seul échoue après Q1/Q2/Q3 → SUSPECT_DSR
-        q123 = [q for q in [self.q1, self.q2, self.q3] if q is not None]
-        if q123 and all(q.passed for q in q123) and self.q4 and not self.q4.passed:
-            return "SUSPECT_DSR"
-        failed = []
-        if self.q1 and not self.q1.passed: failed.append("Q1")
-        if self.q2 and not self.q2.passed: failed.append("Q2")
-        if self.q3 and not self.q3.passed: failed.append("Q3")
-        if self.q4 and not self.q4.passed: failed.append("Q4")
-        return f"ARCHIVE_FAIL_{'_'.join(failed)}"
-
-    def print_summary(self) -> None:
-        print(f"\n{'='*60}")
-        print(f"MÉTIS v2.1 REPORT — {self.hypothesis}")
-        print(f"{'='*60}")
-        q_map = [
-            ("Q1 Walk-forward",  self.q1, lambda q: f"{q.median_cnsr:.3f}"),
-            ("Q2 Permutation",   self.q2, lambda q: f"p={q.p_value:.4f}"),
-            ("Q3 Stabilité EMA", self.q3, lambda q: f"{q.target_cnsr:.3f}"),
-            ("Q4 DSR",           self.q4, lambda q: f"DSR={q.dsr:.4f}"),
-        ]
-        for name, q, fmt in q_map:
-            if q is None:
-                print(f"  ⬜ {name:30s} — non exécuté")
-                continue
-            emoji  = "✅" if q.passed else ("⚠️" if "DSR" in name else "🔴")
-            metric = fmt(q) if q.passed or not q.passed else "—"
-            try:
-                metric = fmt(q)
-            except Exception:
-                metric = "—"
-            print(f"  {emoji} {name:30s} → {metric}")
-            print(f"       {q.notes}")
-        v = self.verdict()
-        print(f"\n{'='*60}")
-        print(f"  VERDICT : {v}")
-        print(f"{'='*60}")
-
-    def export_kb_update(self) -> dict:
-        """Dict prêt pour mise à jour du nœud 'metis' dans le YAML KB."""
-        def _q(q, metric_fn):
-            if q is None:
-                return {"statut": "en_cours", "resultat": None, "notes": ""}
-            try:
-                m = metric_fn(q)
-            except Exception:
-                m = None
-            return {
-                "statut":   "pass" if q.passed else "fail",
-                "resultat": m,
-                "notes":    q.notes,
-                "date":     datetime.now().strftime("%Y-%m-%d"),
-            }
+    def to_dict(self) -> dict:
         return {
-            "metis": {
-                "Q1_walkforward":   _q(self.q1, lambda q: q.median_cnsr),
-                "Q2_permutation":   _q(self.q2, lambda q: q.p_value),
-                "Q3_stabilite_ema": _q(self.q3, lambda q: q.target_cnsr),
-                "Q4_dsr":           _q(self.q4, lambda q: q.dsr),
-            },
-            "verdict_final": self.verdict(),
-            "date_metis":    datetime.now().strftime("%Y-%m-%d"),
+            "verdict_global": self.verdict_global,
+            "cnsr_oos":       self.cnsr_oos,
+            "q1": {
+                "verdict":      self.q1.verdict if self.q1 else None,
+                "n_pass":       self.q1.n_pass if self.q1 else None,
+                "median_cnsr":  self.q1.median_cnsr if self.q1 else None,
+            } if self.q1 else None,
+            "q2": {
+                "verdict":      self.q2.verdict if self.q2 else None,
+                "pvalue":       self.q2.pvalue if self.q2 else None,
+                "cnsr_obs":     self.q2.cnsr_obs if self.q2 else None,
+            } if self.q2 else None,
+            "q3": {
+                "verdict":      self.q3.verdict if self.q3 else None,
+                "is_spike":     self.q3.is_spike if self.q3 else None,
+                "cnsr_target":  self.q3.cnsr_target if self.q3 else None,
+            } if self.q3 else None,
+            "q4": {
+                "verdict":      self.q4.verdict if self.q4 else None,
+                "dsr":          self.q4.dsr if self.q4 else None,
+                "n_trials":     self.q4.n_trials if self.q4 else None,
+            } if self.q4 else None,
+            "notes":          self.notes,
         }
 
 
 class METISRunner:
-    """
-    Orchestre MÉTIS v2.1 — Q1 → Q2 → Q3 → Q4.
+    def __init__(self, config_path: str = "config.yaml"):
+        self.config_path = config_path
+        self.backtester  = Backtester(config_path)
+        self.sm          = SplitManager(config_path)
+        self._prices_full = None
+        self._r_btc_full  = None
+        self._prices_oos  = None
+        self._r_btc_oos   = None
+        self._prices_is   = None
+        self._r_btc_is    = None
 
-    Usage
-    -----
-    runner = METISRunner(
-        strategy_fn=my_fn, params={"ema_span": 60},
-        bundle=bundle, split_manager=sm,
-        hypothesis="H9+EMA60j", n_trials=101,
-    )
-    report = runner.run(questions="Q1Q2Q3Q4")
-    report.print_summary()
-    """
-
-    def __init__(
-        self,
-        strategy_fn:   Callable,
-        params:        dict,
-        bundle,
-        split_manager,
-        hypothesis:    str   = "unnamed",
-        n_trials:      int   = 1,
-        rf_annual:     float = 0.04,
-    ):
-        self._fn  = strategy_fn
-        self._p   = params
-        self._b   = bundle
-        self._sm  = split_manager
-        self._hyp = hypothesis
-        self._N   = n_trials
-        self._rf  = rf_annual
-
-        # Log-rendements pré-calculés — Layer 3 utilise uniquement les données réelles
-        import numpy as _np
-        r_pair_full = _np.log(self._b.paxg_btc / self._b.paxg_btc.shift(1)).dropna()
-        r_base_full = _np.log(self._b.btc_usd  / self._b.btc_usd.shift(1)).dropna()
-        self._r_pair_is,  self._r_pair_oos  = split_manager.apply(r_pair_full)
-        self._r_base_is,  self._r_base_oos  = split_manager.apply(r_base_full)
-        self._r_pair_full = r_pair_full
-        self._r_base_full = r_base_full
+    def _load_data(self):
+        if self._prices_full is not None:
+            return
+        loader = DataLoader(self.config_path)
+        paxg, btc, r_paxg, r_btc = loader.load_prices()
+        prices_full = pd.DataFrame({"paxg": paxg, "btc": btc})
+        self._prices_full = prices_full
+        self._r_btc_full  = r_btc
+        self._prices_is,  self._prices_oos  = self.sm.apply_df(prices_full)
+        self._r_btc_is,   self._r_btc_oos   = self.sm.apply(r_btc)
 
     def run(
         self,
+        allocation_fn: Callable,
+        n_perm: int = 10000,
+        n_trials: int = 1,
+        target_span: int = 60,
+        ema_step: int = 10,
+        checkpoint_dir: Optional[Path] = None,
         questions: str = "Q1Q2Q3Q4",
-        n_perm:    int = 10_000,
-        ema_step:  int = 5,
+        verbose: bool = True,
     ) -> METISReport:
         """
+        Exécute MÉTIS Q1→Q4 sur la paire chargée depuis config.
+
         Paramètres
         ----------
-        questions : sous-ensemble à exécuter ex. "Q1Q3Q4"
-        n_perm    : itérations permutation (réduire à 500 pour tests)
-        ema_step  : pas grille EMA (réduire à 10 pour tests rapides)
+        allocation_fn  : signal à tester (fn(prices_df) → pd.Series)
+        n_perm         : nombre de permutations pour Q2 (500 en --fast, 10000 complet)
+        n_trials       : nombre de variantes dans la famille (pour Q4 DSR)
+        target_span    : span EMA à tester en Q3
+        ema_step       : pas de la grille EMA en Q3
+        checkpoint_dir : répertoire pour sauvegarder les checkpoints Q2
+        questions      : quelles questions exécuter (ex. "Q1Q3Q4" pour skip Q2)
+        verbose        : afficher la progression
         """
-        print(f"\n{'='*60}")
-        print(f"MÉTIS v2.1 — {self._hyp}")
-        print(f"IS  : {self._r_pair_is.index[0]} → {self._r_pair_is.index[-1]}")
-        print(f"OOS : {self._r_pair_oos.index[0]} → {self._r_pair_oos.index[-1]}")
-        print(f"N_trials : {self._N} | Questions : {questions}")
-        print(f"{'='*60}")
+        self._load_data()
+        report = METISReport(verdict_global="EN_COURS")
 
-        report = METISReport(hypothesis=self._hyp)
+        # ── CNSR OOS du signal ────────────────────────────────────────────────
+        result_oos = self.backtester.run(
+            allocation_fn, self._prices_oos, self._r_btc_oos
+        )
+        zero = pd.Series(0.0, index=result_oos["r_portfolio_usd"].index)
+        cnsr_oos = compute_cnsr(result_oos["r_portfolio_usd"], zero)["cnsr_usd_fed"]
+        report.cnsr_oos = round(float(cnsr_oos), 4)
 
+        # ── Q1 Walk-forward ───────────────────────────────────────────────────
         if "Q1" in questions:
-            report.q1 = run_q1(self._fn, self._p,
-                               self._r_pair_full, self._r_base_full, self._rf)
+            if verbose:
+                print("\n📊 MÉTIS Q1 — Walk-forward (5 fenêtres, critère ≥ 4/5 avec CNSR > 0.5) ...")
+            q1 = run_q1(
+                self._prices_full, self._r_btc_full,
+                allocation_fn, self.backtester,
+            )
+            report.q1 = q1
+            for w in q1.windows:
+                icon = "✅" if w["pass"] else "🔴"
+                cnsr_s = f"CNSR={w['cnsr']:.3f}" if w["cnsr"] is not None else "CNSR=N/A"
+                if verbose:
+                    print(f"    {icon} Fenêtre {w['window']} ({w['start']} → {w['end']}) : {cnsr_s}")
+            verdict_q1 = "✅" if q1.verdict == "PASS" else "🔴"
+            if verbose:
+                print(f"  {verdict_q1} Q1 : {q1.n_pass}/{q1.n_total} fenêtres ≥ 0.5 | médiane CNSR={q1.median_cnsr}")
 
+        # ── Q2 Permutation ────────────────────────────────────────────────────
         if "Q2" in questions:
-            report.q2 = run_q2(self._fn, self._p,
-                               self._r_pair_oos, self._r_base_oos,
-                               self._rf, n_perm=n_perm)
+            cp_path = None
+            if checkpoint_dir:
+                checkpoint_dir = Path(checkpoint_dir)
+                checkpoint_dir.mkdir(parents=True, exist_ok=True)
+                cp_path = checkpoint_dir / "q2_checkpoint.yaml"
 
+            if verbose:
+                print(f"\n📊 MÉTIS Q2 — Permutation ({n_perm} itérations, p-value < 0.05) ...")
+            q2 = run_q2(
+                self._prices_oos, self._r_btc_oos,
+                allocation_fn, self.backtester,
+                n_perm=n_perm, checkpoint_path=cp_path,
+            )
+            report.q2 = q2
+            verdict_q2 = "✅" if q2.verdict == "PASS" else "🔴"
+            if verbose:
+                print(f"  {verdict_q2} Q2 : p-value={q2.pvalue} | CNSR_obs={q2.cnsr_obs} | bench={q2.cnsr_bench}")
+
+        # ── Q3 Stabilité EMA ──────────────────────────────────────────────────
         if "Q3" in questions:
-            report.q3 = run_q3(self._fn, self._p,
-                               self._r_pair_is, self._r_base_is,
-                               self._rf, ema_step=ema_step)
+            if verbose:
+                print(f"\n📊 MÉTIS Q3 — Stabilité EMA (grille 20→120j pas={ema_step}, IS uniquement) ...")
+            q3 = run_q3(
+                self._prices_is, self._r_btc_is,
+                target_span=target_span,
+                backtester=self.backtester,
+                ema_step=ema_step,
+            )
+            report.q3 = q3
+            verdict_q3 = "✅" if q3.verdict == "PASS" else "🔴"
+            if verbose:
+                print(f"  {verdict_q3} Q3 : CNSR(span={target_span})={q3.cnsr_target} | "
+                      f"médiane_voisinage={q3.median_neighbors} | spike={'OUI' if q3.is_spike else 'NON'}")
 
+        # ── Q4 DSR ────────────────────────────────────────────────────────────
         if "Q4" in questions:
-            report.q4 = run_q4(self._fn, self._p,
-                               self._r_pair_oos, self._r_base_oos,
-                               self._N, self._rf)
+            if verbose:
+                print(f"\n📊 MÉTIS Q4 — DSR (N_trials={n_trials}, seuil ≥ 0.95) ...")
+            q4 = run_q4(
+                result_oos["r_portfolio_usd"],
+                cnsr_oos=cnsr_oos,
+                n_trials=n_trials,
+            )
+            report.q4 = q4
+            verdict_q4 = "✅" if q4.verdict == "PASS" else ("⚠️" if q4.verdict == "SUSPECT_DSR" else "🔴")
+            if verbose:
+                print(f"  {verdict_q4} Q4 : DSR={q4.dsr} | N_trials={n_trials} | seuil=0.95")
+
+        # ── Verdict global ────────────────────────────────────────────────────
+        fails = []
+        if report.q1 and report.q1.verdict == "FAIL":     fails.append("Q1")
+        if report.q2 and report.q2.verdict == "FAIL":     fails.append("Q2")
+        if report.q3 and report.q3.verdict == "FAIL":     fails.append("Q3")
+        if report.q4 and report.q4.verdict in ("FAIL",):  fails.append("Q4")
+
+        suspect_dsr = (report.q4 and report.q4.verdict == "SUSPECT_DSR")
+
+        if not fails and not suspect_dsr:
+            report.verdict_global = "CERTIFIE"
+        elif not fails and suspect_dsr:
+            report.verdict_global = "SUSPECT_DSR"
+        else:
+            label = "_".join(fails)
+            report.verdict_global = f"ARCHIVE_FAIL_{label}"
+            if suspect_dsr:
+                report.verdict_global += "_Q4"
 
         return report

@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "qaaf-studio"
+version = "0.3.0"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "pandas",
+    "pyyaml",
+    "scipy",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["layer1_engine*", "layer2_qualification*", "layer3_validation*"]

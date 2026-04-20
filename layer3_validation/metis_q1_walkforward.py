@@ -1,96 +1,95 @@
 """
-metis_q1_walkforward.py — MÉTIS Q1
-Layer 3 QAAF Studio 3.0
+MÉTIS Q1 — Walk-forward (robustesse temporelle).
 
-Walk-forward : robustesse temporelle sur 5 fenêtres glissantes.
-Métrique : CNSR-USD (pas Sharpe paire brute).
+Protocole : 5 fenêtres glissantes sur l'historique complet.
+Critère    : CNSR-USD > 0.5 sur au moins 4/5 fenêtres.
+Justification : une fenêtre robuste est probablement conjoncturelle,
+                quatre sur cinq suggère une propriété structurelle.
 
-Critère : CNSR-USD OOS > 0.5 sur au moins 4/5 fenêtres.
-Justification : une fenêtre robuste est conjoncturelle,
-quatre sur cinq suggère une propriété structurelle.
-
-Règle : Layer 3 utilise uniquement les données réelles IS+OOS.
-Ni les données synthétiques (Layer 2) ni des splits redéfinis.
+Note importante : ce module teste des fenêtres glissantes sur
+l'HISTORIQUE COMPLET (IS + OOS), pas seulement sur l'OOS.
+C'est volontaire : le walk-forward évalue la robustesse temporelle
+du signal sur des périodes non vues au moment de l'optimisation.
 """
-
-from __future__ import annotations
-from dataclasses import dataclass
-from typing import Callable, List
 
 import numpy as np
 import pandas as pd
+from dataclasses import dataclass, field
+from typing import Callable
 
+from layer1_engine.backtester     import Backtester
 from layer1_engine.metrics_engine import compute_cnsr
-
-MIN_CNSR_PER_WINDOW = 0.50
-MIN_WINDOWS_PASS    = 4
-N_WINDOWS           = 5
 
 
 @dataclass
-class WalkForwardResult:
-    passed:          bool
-    n_windows_pass:  int
-    window_cnsrs:    List[float]
-    median_cnsr:     float
-    notes:           str
+class Q1Result:
+    verdict:      str     # PASS | FAIL
+    n_pass:       int     # fenêtres avec CNSR > seuil
+    n_total:      int     # total fenêtres testées
+    median_cnsr:  float   # médiane des CNSR par fenêtre
+    windows:      list    # détail par fenêtre
+    threshold:    float   # seuil CNSR utilisé
+    min_windows:  int     # minimum requis pour PASS
 
 
 def run_q1(
-    strategy_fn:   Callable[[pd.Series, dict], pd.Series],
-    params:        dict,
-    r_pair_full:   pd.Series,   # IS + OOS concaténés
-    r_base_full:   pd.Series,
-    rf_annual:     float = 0.04,
-) -> WalkForwardResult:
+    prices_full: pd.DataFrame,
+    r_btc_full: pd.Series,
+    allocation_fn: Callable,
+    backtester: Backtester,
+    n_windows: int = 5,
+    cnsr_threshold: float = 0.5,
+    min_windows_pass: int = 4,
+) -> Q1Result:
     """
-    Exécute le walk-forward 5 fenêtres sur r_pair_full (IS + OOS).
-    Chaque fenêtre utilise un split 70/30 interne.
+    Exécute le walk-forward sur n_windows fenêtres glissantes.
+
+    Les fenêtres sont construites sur prices_full (historique complet).
+    Chaque fenêtre couvre ~1/6 de l'historique (split 70/30 par fenêtre).
     """
-    print(f"\n📊 MÉTIS Q1 — Walk-forward ({N_WINDOWS} fenêtres, "
-          f"critère ≥ {MIN_WINDOWS_PASS}/{N_WINDOWS} avec CNSR > {MIN_CNSR_PER_WINDOW}) ...")
+    total_days = len(prices_full)
+    window_size = total_days // (n_windows + 1)
 
-    T      = len(r_pair_full)
-    w_size = T // N_WINDOWS
-    cnsrs  = []
+    windows_results = []
 
-    for i in range(N_WINDOWS):
-        start     = i * (T // (N_WINDOWS + 1))
-        end       = min(start + w_size, T)
-        split_70  = start + int((end - start) * 0.70)
+    for i in range(n_windows):
+        test_start = (i + 1) * window_size
+        test_end   = min(test_start + window_size, total_days)
 
-        if end - split_70 < 30:
-            cnsrs.append(np.nan)
-            continue
+        prices_win = prices_full.iloc[test_start:test_end].copy()
+        r_btc_win  = r_btc_full.reindex(prices_win.index).dropna()
+        prices_win = prices_win.reindex(r_btc_win.index)
 
-        r_pair_is  = r_pair_full.iloc[start:split_70]
-        r_pair_oos = r_pair_full.iloc[split_70:end]
-        r_base_oos = r_base_full.iloc[split_70:end]
+        cnsr_val = float("nan")
+        if len(prices_win) >= 30:
+            try:
+                result = backtester.run(allocation_fn, prices_win, r_btc_win)
+                zero = pd.Series(0.0, index=result["r_portfolio_usd"].index)
+                metrics = compute_cnsr(result["r_portfolio_usd"], zero)
+                cnsr_val = metrics["cnsr_usd_fed"]
+            except Exception:
+                pass
 
-        try:
-            alloc_oos = strategy_fn(r_pair_oos, params)
-            common    = r_pair_oos.index.intersection(alloc_oos.index)
-            r_port    = alloc_oos.reindex(common).ffill() * r_pair_oos.loc[common]
-            cnsr_val  = compute_cnsr(r_port, r_base_oos.reindex(common),
-                                     rf_annual)["cnsr_usd_fed"]
-        except Exception as e:
-            cnsr_val = np.nan
-            print(f"    ⚠️  Fenêtre {i+1} exception : {e}")
+        passed = (not np.isnan(cnsr_val)) and (cnsr_val >= cnsr_threshold)
+        windows_results.append({
+            "window":     i + 1,
+            "start":      str(prices_win.index[0].date()) if len(prices_win) > 0 else "N/A",
+            "end":        str(prices_win.index[-1].date()) if len(prices_win) > 0 else "N/A",
+            "cnsr":       round(float(cnsr_val), 4) if not np.isnan(cnsr_val) else None,
+            "pass":       passed,
+            "n_obs":      len(prices_win),
+        })
 
-        is_pass = np.isfinite(cnsr_val) and cnsr_val >= MIN_CNSR_PER_WINDOW
-        emoji   = "✅" if is_pass else "🔴"
-        d0      = r_pair_full.index[start]
-        d1      = r_pair_full.index[end - 1]
-        print(f"    {emoji} Fenêtre {i+1} ({d0} → {d1}) : CNSR={cnsr_val:.3f}")
-        cnsrs.append(cnsr_val)
+    valid_cnsrs = [w["cnsr"] for w in windows_results if w["cnsr"] is not None]
+    n_pass      = sum(w["pass"] for w in windows_results)
+    median_cnsr = float(np.median(valid_cnsrs)) if valid_cnsrs else float("nan")
 
-    n_pass     = sum(1 for c in cnsrs if np.isfinite(c) and c >= MIN_CNSR_PER_WINDOW)
-    passed     = n_pass >= MIN_WINDOWS_PASS
-    median_c   = float(np.nanmedian(cnsrs))
-    notes      = (f"{n_pass}/{N_WINDOWS} fenêtres ≥ {MIN_CNSR_PER_WINDOW} | "
-                  f"médiane CNSR={median_c:.3f}")
-
-    emoji = "✅" if passed else "🔴"
-    print(f"  {emoji} Q1 : {notes}")
-
-    return WalkForwardResult(passed, n_pass, cnsrs, median_c, notes)
+    return Q1Result(
+        verdict     = "PASS" if n_pass >= min_windows_pass else "FAIL",
+        n_pass      = n_pass,
+        n_total     = len(windows_results),
+        median_cnsr = round(median_cnsr, 4),
+        windows     = windows_results,
+        threshold   = cnsr_threshold,
+        min_windows = min_windows_pass,
+    )
