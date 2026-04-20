@@ -14,4 +14,4 @@ pyyaml>=6.0
 matplotlib>=3.7.0
 
 # DQF complet (optionnel — stub actif sans ce package)
-# mif-dqf
+mif-dqf
