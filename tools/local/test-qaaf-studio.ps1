@@ -160,12 +160,21 @@ if (Test-Path "pyproject.toml") {
 }
 
 Write-Step "Verification package mif-dqf (optionnel)..."
-$dqfCheck = python -m pip show mif-dqf 2>&1
-if ($LASTEXITCODE -eq 0) {
-    $dqfVersion = ($dqfCheck | Where-Object { $_ -match "^Version:" }) -replace "Version:\s*", ""
-    Write-OK "mif-dqf $dqfVersion installe -- mode DQF complet actif"
-} else {
-    Write-Warn "mif-dqf non installe -- stub DQF actif (normal en developpement)"
+try {
+    if ($UseUv) {
+        $dqfCheck = uv pip show mif-dqf 2>&1
+    } else {
+        $dqfCheck = pip show mif-dqf 2>&1
+    }
+    if ($LASTEXITCODE -eq 0) {
+        $dqfVersion = ($dqfCheck | Where-Object { $_ -match "^Version:" }) -replace "Version:\s*", ""
+        Write-OK "mif-dqf $dqfVersion installe dans le venv -- mode DQF complet actif"
+    } else {
+        Write-Warn "mif-dqf absent du venv -- stub DQF actif"
+        Write-Warn "Pour activer : uv pip install mif-dqf"
+    }
+} catch {
+    Write-Warn "mif-dqf absent du venv -- stub DQF actif"
 }
 
 # ----------------------------------------------------------------------------
