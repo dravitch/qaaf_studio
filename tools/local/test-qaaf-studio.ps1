@@ -160,14 +160,11 @@ if (Test-Path "pyproject.toml") {
 }
 
 Write-Step "Verification package mif-dqf (optionnel)..."
-try {
-    $null = python -c "import mif_dqf" 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        Write-OK "mif-dqf installe -- mode DQF complet actif"
-    } else {
-        Write-Warn "mif-dqf non installe -- stub DQF actif (normal en developpement)"
-    }
-} catch {
+$dqfCheck = python -m pip show mif-dqf 2>&1
+if ($LASTEXITCODE -eq 0) {
+    $dqfVersion = ($dqfCheck | Where-Object { $_ -match "^Version:" }) -replace "Version:\s*", ""
+    Write-OK "mif-dqf $dqfVersion installe -- mode DQF complet actif"
+} else {
     Write-Warn "mif-dqf non installe -- stub DQF actif (normal en developpement)"
 }
 
