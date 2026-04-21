@@ -184,7 +184,8 @@ class DataLoader:
             try:
                 import yfinance as yf
                 data   = yf.download(ticker, start=start, end=end,
-                                     auto_adjust=True, progress=False)
+                                     auto_adjust=True, progress=False,
+                                     timeout=15)
                 prices = data["Close"].squeeze()
             except Exception as e:
                 raise RuntimeError(f"Failed to download {ticker}: {e}")
