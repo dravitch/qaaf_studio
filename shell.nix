@@ -21,14 +21,17 @@ pkgs.mkShell {
     pkgs.stdenv.cc.cc.lib
     pkgs.zlib
     pkgs.openssl
+    pkgs.curl.dev      # libcurl headers pour curl_cffi (dépendance yfinance)
+    pkgs.cacert        # certificats SSL pour pip + yfinance downloads
   ];
 
   shellHook = ''
     echo "🔬 Initialisation de l'environnement QAAF Studio 3.0..."
 
     # 1. Chemins bibliothèques C
-    export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.zlib}/lib:${pkgs.openssl.out}/lib:$LD_LIBRARY_PATH"
-    export PKG_CONFIG_PATH="${pkgs.openssl.dev}/lib/pkgconfig:${pkgs.zlib}/lib/pkgconfig:$PKG_CONFIG_PATH"
+    export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.zlib}/lib:${pkgs.openssl.out}/lib:${pkgs.curl.out}/lib:$LD_LIBRARY_PATH"
+    export PKG_CONFIG_PATH="${pkgs.openssl.dev}/lib/pkgconfig:${pkgs.zlib}/lib/pkgconfig:${pkgs.curl.dev}/lib/pkgconfig:$PKG_CONFIG_PATH"
+    export NIX_SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
 
     # 2. Venv local
     # --system-site-packages : hérite de numpy/pandas/scipy du pythonEnv nix
@@ -54,25 +57,26 @@ pkgs.mkShell {
     # 4. PYTHONPATH : imports from project root
     export PYTHONPATH="$(pwd):$PYTHONPATH"
 
-    # 5. Vérifications
+    # 5. Vérifications — utiliser le Python du venv explicitement
+    PY="$VENV_DIR/bin/python"
     echo ""
     echo "📊 Vérification des dépendances QAAF Studio 3.0 :"
     echo ""
-    python -c "import numpy;      print('   ✓ numpy:',      numpy.__version__)"      2>/dev/null || echo "   ✗ numpy"
-    python -c "import pandas;     print('   ✓ pandas:',     pandas.__version__)"     2>/dev/null || echo "   ✗ pandas"
-    python -c "import scipy;      print('   ✓ scipy:',      scipy.__version__)"      2>/dev/null || echo "   ✗ scipy"
-    python -c "import yaml;       print('   ✓ pyyaml:',     yaml.__version__)"       2>/dev/null || echo "   ✗ pyyaml"
-    python -c "import requests;   print('   ✓ requests:',   requests.__version__)"   2>/dev/null || echo "   ✗ requests"
-    python -c "import matplotlib; print('   ✓ matplotlib:', matplotlib.__version__)" 2>/dev/null || echo "   ✗ matplotlib"
-    python -c "import yfinance;   print('   ✓ yfinance:',   yfinance.__version__)"   2>/dev/null || echo "   ✗ yfinance"
-    python -c "import pytest;     print('   ✓ pytest:',     pytest.__version__)"     2>/dev/null || echo "   ✗ pytest"
+    $PY -c "import numpy;      print('   ✓ numpy:',      numpy.__version__)"      2>/dev/null || echo "   ✗ numpy"
+    $PY -c "import pandas;     print('   ✓ pandas:',     pandas.__version__)"     2>/dev/null || echo "   ✗ pandas"
+    $PY -c "import scipy;      print('   ✓ scipy:',      scipy.__version__)"      2>/dev/null || echo "   ✗ scipy"
+    $PY -c "import yaml;       print('   ✓ pyyaml:',     yaml.__version__)"       2>/dev/null || echo "   ✗ pyyaml"
+    $PY -c "import requests;   print('   ✓ requests:',   requests.__version__)"   2>/dev/null || echo "   ✗ requests"
+    $PY -c "import matplotlib; print('   ✓ matplotlib:', matplotlib.__version__)" 2>/dev/null || echo "   ✗ matplotlib"
+    $PY -c "import yfinance;   print('   ✓ yfinance:',   yfinance.__version__)"   2>/dev/null || echo "   ✗ yfinance"
+    $PY -c "import pytest;     print('   ✓ pytest:',     pytest.__version__)"     2>/dev/null || echo "   ✗ pytest"
     echo ""
-    python -c "from mif_dqf import DQFValidator; print('   ✓ mif-dqf: mode DIAGNOSTIC complet')" \
+    $PY -c "from mif_dqf import DQFValidator; print('   ✓ mif-dqf: mode DIAGNOSTIC complet')" \
       2>/dev/null || echo "   ℹ  mif-dqf: non installé — stub DQF actif"
     echo ""
 
     # 6. Imports QAAF Studio
-    python -c "
+    $PY -c "
 from layer1_engine import compute_cnsr, deflated_sharpe_ratio, Backtester, BenchmarkFactory
 from layer2_qualification.mif.mif_runner import MIFRunner
 from layer3_validation.metis_runner import METISRunner
@@ -82,7 +86,7 @@ print('   ✓ QAAF Studio 3.0 — tous les imports OK')
 
     echo ""
     echo "✅ Environnement QAAF Studio 3.0 prêt"
-    echo "🐍 Python: $(python --version)"
+    echo "🐍 Python: $($PY --version)"
     echo ""
     echo "🚀 Commandes disponibles :"
     echo "   python -m unittest tests/test_layer1_metrics.py tests/test_layer1_backtester.py -v"

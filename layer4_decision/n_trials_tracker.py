@@ -4,8 +4,8 @@ import shutil
 
 
 class NTrialsTracker:
-    def __init__(self, state_path: Path):
-        self.path = state_path
+    def __init__(self, state_path):
+        self.path = Path(state_path)
         self._state: dict = self._load()
 
     def _load(self) -> dict:
