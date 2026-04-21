@@ -23,18 +23,17 @@ pkgs.mkShell {
     pkgs.openssl
     pkgs.curl.dev      # libcurl headers pour curl_cffi
     pkgs.cacert        # certificats SSL pour pip + yfinance downloads
-    pkgs.libffi        # libffi headers pour compiler curl_cffi depuis source
   ];
 
   shellHook = ''
     echo "🔬 Initialisation de l'environnement QAAF Studio 3.0..."
 
     # 1. Chemins bibliothèques C
-    export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.zlib}/lib:${pkgs.openssl.out}/lib:${pkgs.curl.out}/lib:${pkgs.libffi}/lib:$LD_LIBRARY_PATH"
+    export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.zlib}/lib:${pkgs.openssl.out}/lib:${pkgs.curl.out}/lib:$LD_LIBRARY_PATH"
     export PKG_CONFIG_PATH="${pkgs.openssl.dev}/lib/pkgconfig:${pkgs.zlib}/lib/pkgconfig:${pkgs.curl.dev}/lib/pkgconfig:$PKG_CONFIG_PATH"
     export NIX_SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-    export LDFLAGS="-L${pkgs.libffi}/lib"
-    export CFLAGS="-I${pkgs.libffi}/include"
+    # Forcer yfinance à utiliser requests — curl_cffi wheel binaire cassée sur NixOS
+    export YFINANCE_NO_CURL=1
 
     # 2. Venv local
     # --system-site-packages : hérite de numpy/pandas/scipy du pythonEnv nix
@@ -50,12 +49,10 @@ pkgs.mkShell {
 
     # 3. Packages pip uniquement (absent de nixpkgs ou inaccessibles via --system-site-packages)
     pip install --quiet scipy pyyaml matplotlib
-    # curl_cffi : compiler depuis source — la wheel binaire cible python3.13 (Nix store)
-    #             mais le venv tourne en python3.12 → _cffi_backend absent sans recompilation
-    pip install curl_cffi --no-binary curl_cffi --quiet \
-      || echo "   ⚠  curl_cffi: compilation échouée (libffi manquant ?)"
-    # yfinance : utilise curl_cffi installé ci-dessus
-    pip install yfinance --quiet || echo "   ⚠  yfinance: pip install échoué — vérifier réseau"
+    # yfinance : curl_cffi wheel binaire incompatible NixOS (ABI python3.13 vs venv python3.12)
+    # → installer yfinance, puis désinstaller curl_cffi pour forcer le backend requests
+    pip install --quiet yfinance
+    pip uninstall -y curl_cffi 2>/dev/null || true
     # pytest : tests
     pip install --quiet pytest
     # mif-dqf : DQF complet (stub actif sans)
@@ -75,7 +72,14 @@ pkgs.mkShell {
     $PY -c "import yaml;       print('   ✓ pyyaml:',     yaml.__version__)"       2>/dev/null || echo "   ✗ pyyaml"
     $PY -c "import requests;   print('   ✓ requests:',   requests.__version__)"   2>/dev/null || echo "   ✗ requests"
     $PY -c "import matplotlib; print('   ✓ matplotlib:', matplotlib.__version__)" 2>/dev/null || echo "   ✗ matplotlib"
-    $PY -c "import yfinance;   print('   ✓ yfinance:',   yfinance.__version__)"   2>/dev/null || echo "   ✗ yfinance"
+    $PY -c "
+import yfinance as yf
+df = yf.download('BTC-USD', period='5d', progress=False)
+if len(df) > 0:
+    print('   ✓ yfinance:', yf.__version__, '(backend: requests)')
+else:
+    print('   ✗ yfinance: download vide')
+" 2>/dev/null || echo "   ✗ yfinance: import ou réseau échoué"
     $PY -c "import pytest;     print('   ✓ pytest:',     pytest.__version__)"     2>/dev/null || echo "   ✗ pytest"
     echo ""
     $PY -c "from mif_dqf import DQFValidator; print('   ✓ mif-dqf: mode DIAGNOSTIC complet')" \
