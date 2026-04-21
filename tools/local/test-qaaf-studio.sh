@@ -118,6 +118,19 @@ if [[ -z "$LAYER" || "$LAYER" == "3" ]]; then
     _pytest "test_layer3_metis" tests/test_layer3_metis.py
 fi
 
+# ── Layer 4 ──────────────────────────────────────────────────────────────────
+if [[ -z "$LAYER" || "$LAYER" == "4" ]]; then
+    echo ""
+    echo "── Layer 4 — KB + D-SIG ──"
+    _pytest "test_layer4_dsig (7 tests)" tests/test_layer4_dsig.py
+    if python -m pytest tests/test_layer4_dsig.py::test_gate1_b5050_score_range -q --tb=short 2>&1 | grep -q "passed"; then
+        echo "[OK]  Gate 1 — score(B_5050) ∈ [72,78] — v0.4→v1.0 autorisé"
+    else
+        echo "[FAIL] Gate 1 — score(B_5050) hors [72,78]"
+        FAIL=$((FAIL+1))
+    fi
+fi
+
 echo ""
 echo "────────────────────────────────────────"
 echo "  Résultat : $PASS OK, $FAIL FAIL"
