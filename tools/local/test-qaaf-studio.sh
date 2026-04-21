@@ -6,6 +6,7 @@
 #   ./test-qaaf-studio.sh --layer 1    → Layer 1 uniquement
 #   ./test-qaaf-studio.sh --layer 2    → Layer 2 uniquement
 #   ./test-qaaf-studio.sh --layer 3    → Layer 3 uniquement
+#   ./test-qaaf-studio.sh --layer 4    → Layer 4 uniquement
 #   ./test-qaaf-studio.sh --smoke      → smoke tests uniquement (import + CNSR)
 
 set -euo pipefail
@@ -17,7 +18,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --layer) LAYER="$2"; shift 2 ;;
         --smoke) SMOKE_ONLY=true; shift ;;
-        *) echo "Usage: $0 [--layer 1|2|3] [--smoke]"; exit 1 ;;
+        *) echo "Usage: $0 [--layer 1|2|3|4] [--smoke]"; exit 1 ;;
     esac
 done
 

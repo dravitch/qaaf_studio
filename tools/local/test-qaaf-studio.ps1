@@ -399,7 +399,7 @@ if ($TotalFail -eq 0) {
     Write-Host "  [OK] Pret pour la prochaine session Claude Code." -ForegroundColor Green
 } else {
     Write-Host "  [FAIL] $TotalFail test(s) en echec -- corriger avant de continuer." -ForegroundColor Red
-    Write-Host "  Conseil : relancer avec -Layer 1, -Layer 2 ou -Layer 3 pour isoler." -ForegroundColor Yellow
+    Write-Host "  Conseil : relancer avec -Layer 1, -Layer 2, -Layer 3 ou -Layer 4 pour isoler." -ForegroundColor Yellow
 }
 
 Write-Host ""
