@@ -21,17 +21,20 @@ pkgs.mkShell {
     pkgs.stdenv.cc.cc.lib
     pkgs.zlib
     pkgs.openssl
-    pkgs.curl.dev      # libcurl headers pour curl_cffi (dépendance yfinance)
+    pkgs.curl.dev      # libcurl headers pour curl_cffi
     pkgs.cacert        # certificats SSL pour pip + yfinance downloads
+    pkgs.libffi        # libffi headers pour compiler curl_cffi depuis source
   ];
 
   shellHook = ''
     echo "🔬 Initialisation de l'environnement QAAF Studio 3.0..."
 
     # 1. Chemins bibliothèques C
-    export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.zlib}/lib:${pkgs.openssl.out}/lib:${pkgs.curl.out}/lib:$LD_LIBRARY_PATH"
+    export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.zlib}/lib:${pkgs.openssl.out}/lib:${pkgs.curl.out}/lib:${pkgs.libffi}/lib:$LD_LIBRARY_PATH"
     export PKG_CONFIG_PATH="${pkgs.openssl.dev}/lib/pkgconfig:${pkgs.zlib}/lib/pkgconfig:${pkgs.curl.dev}/lib/pkgconfig:$PKG_CONFIG_PATH"
     export NIX_SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+    export LDFLAGS="-L${pkgs.libffi}/lib"
+    export CFLAGS="-I${pkgs.libffi}/include"
 
     # 2. Venv local
     # --system-site-packages : hérite de numpy/pandas/scipy du pythonEnv nix
@@ -47,8 +50,12 @@ pkgs.mkShell {
 
     # 3. Packages pip uniquement (absent de nixpkgs ou inaccessibles via --system-site-packages)
     pip install --quiet scipy pyyaml matplotlib
-    # yfinance : absent de nixpkgs (pas --quiet : afficher erreurs si échec)
-    pip install yfinance || echo "   ⚠  yfinance: pip install échoué — vérifier réseau"
+    # curl_cffi : compiler depuis source — la wheel binaire cible python3.13 (Nix store)
+    #             mais le venv tourne en python3.12 → _cffi_backend absent sans recompilation
+    pip install curl_cffi --no-binary curl_cffi --quiet \
+      || echo "   ⚠  curl_cffi: compilation échouée (libffi manquant ?)"
+    # yfinance : utilise curl_cffi installé ci-dessus
+    pip install yfinance --quiet || echo "   ⚠  yfinance: pip install échoué — vérifier réseau"
     # pytest : tests
     pip install --quiet pytest
     # mif-dqf : DQF complet (stub actif sans)
