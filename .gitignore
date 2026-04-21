@@ -41,6 +41,7 @@ result-*
 
 # ── pytest / unittest ─────────────────────────────────────────────────────────
 .pytest_cache/
+.pytest_tmp/
 .coverage
 htmlcov/
 .tox/
