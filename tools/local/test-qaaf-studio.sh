@@ -13,6 +13,19 @@
 
 set -euo pipefail
 
+# Auto-activation du venv si on n'est pas déjà dans un venv
+if [[ -z "${VIRTUAL_ENV:-}" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+    for _venv in "$REPO_ROOT/.venv" "$REPO_ROOT/.venv_qaaf"; do
+        if [[ -f "$_venv/bin/activate" ]]; then
+            # shellcheck disable=SC1090
+            source "$_venv/bin/activate"
+            break
+        fi
+    done
+fi
+
 LAYER=""
 SMOKE_ONLY=false
 FAST=false

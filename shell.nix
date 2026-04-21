@@ -32,7 +32,7 @@ pkgs.mkShell {
 
     # 2. Venv local
     # --system-site-packages : hérite de numpy/pandas/scipy du pythonEnv nix
-    VENV_DIR=".venv_qaaf"
+    VENV_DIR=".venv"
 
     if [ ! -d "$VENV_DIR" ]; then
       echo "📦 Création de l'environnement virtuel Python..."
