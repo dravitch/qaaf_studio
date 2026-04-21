@@ -18,13 +18,22 @@ class LentilleStatus:
     is_stale: bool
     cnsr_usd_fed: Optional[float]
     N_trials_famille: int
-    metis_complete: bool  # True si Q1/Q2/Q3/Q4 tous != 'en_cours'
+    metis_complete: bool
 
 
 class KBManager:
-    def __init__(self, inventory_path: Path):
-        self.path = inventory_path
+    def __init__(self, hyp_or_inv_path, inventory_path=None):
+        if inventory_path is None:
+            # Backward-compat: single path = inventory only
+            self.path = Path(hyp_or_inv_path)
+            self.hyp_path = None
+        else:
+            # Two-path mode: hypothesis YAML + inventory YAML
+            self.hyp_path = Path(hyp_or_inv_path)
+            self.path = Path(inventory_path)
         self._data = None
+
+    # ── Inventory ────────────────────────────────────────────────────────────
 
     def load(self) -> dict:
         if self._data is None:
@@ -46,7 +55,6 @@ class KBManager:
         return None
 
     def update_metis_verdicts(self, nom: str, verdicts: dict) -> None:
-        """verdicts = {"metis_q1": "PASS", "metis_q2": "FAIL", ...}"""
         data = self.load()
         for l in data.get("lentilles", {}).get("active", []):
             if l.get("nom") == nom:
@@ -57,7 +65,6 @@ class KBManager:
         self._data = None
 
     def update_dsig_signal(self, nom: str, signal: dict) -> None:
-        """signal = {"score": 84, "label": "GOOD", "color": "YELLOW", "trend": "STABLE"}"""
         data = self.load()
         for l in data.get("lentilles", {}).get("active", []):
             if l.get("nom") == nom:
@@ -113,6 +120,76 @@ class KBManager:
             metis_complete=metis_done,
         )
 
+    def update_lentille(
+        self,
+        nom: str,
+        statut: str,
+        cnsr_oos: float,
+        paf_verdict: str,
+        metis_verdict: str,
+        dsig_score: int,
+    ) -> None:
+        data = self.load()
+        for l in data.get("lentilles", {}).get("active", []):
+            if l.get("nom") == nom:
+                l.update({
+                    "status": "CERTIFIE" if statut == "active" else "ARCHIVE",
+                    "cnsr_usd_fed": cnsr_oos,
+                    "paf_verdict": paf_verdict,
+                    "metis_verdict": metis_verdict,
+                    "dsig_score": dsig_score,
+                    "last_verified": str(date.today()),
+                })
+                break
+        self._atomic_write(data)
+        self._data = None
+
+    # ── Hypothesis YAML ──────────────────────────────────────────────────────
+
+    def pre_session_check(self, hypothesis: str, family: str) -> dict:
+        """Returns {"recommendation": "PROCEED"} or {"recommendation": "SKIP_DUPLICATE"}."""
+        if self.hyp_path and self.hyp_path.exists():
+            data = yaml.safe_load(self.hyp_path.read_text(encoding="utf-8")) or {}
+            if data.get("verdict") in ("certifie", "certified", "CERTIFIE"):
+                return {
+                    "recommendation": "SKIP_DUPLICATE",
+                    "reason": f"{hypothesis} already certified",
+                }
+        return {"recommendation": "PROCEED"}
+
+    def record_verdict(
+        self,
+        hypothesis: str,
+        verdict: str,
+        metrics: dict = None,
+        notes: str = "",
+    ) -> None:
+        if self.hyp_path is None:
+            return
+        data = {}
+        if self.hyp_path.exists():
+            data = yaml.safe_load(self.hyp_path.read_text(encoding="utf-8")) or {}
+        data.update({
+            "hypothesis": hypothesis,
+            "verdict": verdict,
+            "date": str(date.today()),
+            "notes": notes,
+        })
+        if metrics:
+            data["metrics"] = metrics
+        self._atomic_write_path(self.hyp_path, data)
+
+    def update_metis(self, metis_dict: dict) -> None:
+        if self.hyp_path is None:
+            return
+        data = {}
+        if self.hyp_path.exists():
+            data = yaml.safe_load(self.hyp_path.read_text(encoding="utf-8")) or {}
+        data.setdefault("metis", {}).update(metis_dict)
+        self._atomic_write_path(self.hyp_path, data)
+
+    # ── Private ──────────────────────────────────────────────────────────────
+
     def _set_status(self, nom: str, new_status: str, section: str) -> None:
         data = self.load()
         for l in data.get("lentilles", {}).get(section, []):
@@ -124,7 +201,10 @@ class KBManager:
         self._data = None
 
     def _atomic_write(self, data: dict) -> None:
-        tmp = self.path.with_suffix(".tmp")
+        self._atomic_write_path(self.path, data)
+
+    def _atomic_write_path(self, path: Path, data: dict) -> None:
+        tmp = path.with_suffix(".tmp")
         with open(tmp, "w", encoding="utf-8") as f:
             yaml.safe_dump(data, f, allow_unicode=True, default_flow_style=False)
-        shutil.move(str(tmp), str(self.path))
+        shutil.move(str(tmp), str(path))

@@ -44,8 +44,8 @@ pkgs.mkShell {
 
     # 3. Packages pip uniquement (absent de nixpkgs ou inaccessibles via --system-site-packages)
     pip install --quiet scipy pyyaml matplotlib
-    # yfinance : absent de nixpkgs
-    pip install --quiet yfinance
+    # yfinance : absent de nixpkgs (pas --quiet : afficher erreurs si échec)
+    pip install yfinance || echo "   ⚠  yfinance: pip install échoué — vérifier réseau"
     # pytest : tests
     pip install --quiet pytest
     # mif-dqf : DQF complet (stub actif sans)

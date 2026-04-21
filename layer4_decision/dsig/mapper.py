@@ -54,7 +54,7 @@ class DSIGMapper:
         previous_score: Optional[int] = None,
     ) -> DSIGSignal:
 
-        dims = {
+        raw_dims = {
             "cnsr":      float(np.clip((cnsr_usd_fed + 1) / 3, 0, 1)),
             "sortino":   float(np.clip((sortino + 1) / 3, 0, 1)),
             "calmar":    float(np.clip(calmar / 2, 0, 1)) if calmar > 0 else 0.0,
@@ -62,7 +62,7 @@ class DSIGMapper:
             "stability": float(np.clip(walk_forward_score, 0, 1)),
         }
 
-        raw = sum(dims[k] * self.WEIGHTS[k] for k in self.WEIGHTS) * 100
+        raw = sum(raw_dims[k] * self.WEIGHTS[k] for k in self.WEIGHTS) * 100
 
         # Plafonnements (préconditions D-SIG v0.5)
         if paf_d1_verdict == "STOP" or cnsr_usd_fed < -0.5:
@@ -87,6 +87,11 @@ class DSIGMapper:
             else:
                 trend = "CRITICAL_FALL"
 
+        dims = {
+            k: {"score": round(raw_dims[k] * 100), "weight": self.WEIGHTS[k]}
+            for k in self.WEIGHTS
+        }
+
         return DSIGSignal(
             score=score,
             label=label,
@@ -96,3 +101,36 @@ class DSIGMapper:
             source_id=source_id or "qaaf-studio::unknown",
             dsr=dsr,
         )
+
+
+def strategy_to_dsig(
+    metrics: dict,
+    paf_verdict: str,
+    n_trials: int = 1,
+    source_id: str = "",
+    previous_score: Optional[int] = None,
+) -> DSIGSignal:
+    """Wrapper : metrics dict + PAF verdict → DSIGSignal."""
+    cnsr = float(metrics.get("cnsr_usd_fed", 0.0))
+    sortino = float(metrics.get("sortino", 0.0))
+    max_dd_pct = float(metrics.get("max_dd_pct", 0.0))
+    walk_forward_score = float(metrics.get("walk_forward_score", 0.5))
+    dsr = metrics.get("dsr")
+    if dsr is not None:
+        dsr = float(dsr)
+    calmar_default = cnsr / (max_dd_pct / 100) if max_dd_pct > 0 else 0.0
+    calmar = float(metrics.get("calmar", calmar_default))
+
+    paf_d1 = "STOP" if paf_verdict in ("STOP", "B_PASSIF_DOMINE", "PAF_STOP") else "N_A"
+
+    return DSIGMapper().map(
+        cnsr_usd_fed=cnsr,
+        sortino=sortino,
+        calmar=calmar,
+        max_dd_pct=max_dd_pct,
+        walk_forward_score=walk_forward_score,
+        paf_d1_verdict=paf_d1,
+        dsr=dsr,
+        source_id=source_id,
+        previous_score=previous_score,
+    )

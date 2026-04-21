@@ -28,6 +28,9 @@ class Q1Result:
     n_total:      int     # total fenêtres testées
     median_cnsr:  float   # médiane des CNSR par fenêtre
     windows:      list    # détail par fenêtre
+
+    def __post_init__(self):
+        self.n_windows_pass = self.n_pass
     threshold:    float   # seuil CNSR utilisé
     min_windows:  int     # minimum requis pour PASS
 
