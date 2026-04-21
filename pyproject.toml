@@ -17,3 +17,6 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["layer1_engine*", "layer2_qualification*", "layer3_validation*", "layer4_decision*"]
+
+[tool.pytest.ini_options]
+addopts = "--basetemp=.pytest_tmp"
