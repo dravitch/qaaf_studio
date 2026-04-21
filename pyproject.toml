@@ -11,8 +11,9 @@ dependencies = [
     "pandas",
     "pyyaml",
     "scipy",
+    "yfinance>=0.2.0",
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["layer1_engine*", "layer2_qualification*", "layer3_validation*"]
+include = ["layer1_engine*", "layer2_qualification*", "layer3_validation*", "layer4_decision*"]
