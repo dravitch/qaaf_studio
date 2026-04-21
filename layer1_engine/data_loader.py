@@ -64,7 +64,7 @@ def _dqf_stub(prices: pd.Series, name: str) -> dict:
         issues.append(f"C2_FAIL: insufficient data ({len(prices)} points)")
 
     # Sauts extrêmes — warning seulement
-    pct        = prices.pct_change().abs().dropna()
+    pct        = prices.pct_change(fill_method=None).abs().dropna()
     n_extreme  = int((pct > 0.5).sum())
     if n_extreme > 5:
         issues.append(f"C2_WARN: {n_extreme} daily moves > 50%")
