@@ -2,33 +2,41 @@
 # test-qaaf-studio.sh — Validation rapide de QAAF Studio par layer
 #
 # Usage:
-#   ./test-qaaf-studio.sh              → tous les layers
-#   ./test-qaaf-studio.sh --layer 1    → Layer 1 uniquement
-#   ./test-qaaf-studio.sh --layer 2    → Layer 2 uniquement
-#   ./test-qaaf-studio.sh --layer 3    → Layer 3 uniquement
-#   ./test-qaaf-studio.sh --layer 4    → Layer 4 uniquement
-#   ./test-qaaf-studio.sh --smoke      → smoke tests uniquement (import + CNSR)
+#   ./test-qaaf-studio.sh                  → tous les layers
+#   ./test-qaaf-studio.sh --layer 1        → Layer 1 uniquement
+#   ./test-qaaf-studio.sh --layer 2        → Layer 2 uniquement
+#   ./test-qaaf-studio.sh --layer 3        → Layer 3 uniquement
+#   ./test-qaaf-studio.sh --layer 4        → Layer 4 uniquement
+#   ./test-qaaf-studio.sh --layer all      → tous les layers (explicite)
+#   ./test-qaaf-studio.sh --smoke          → smoke tests uniquement
+#   ./test-qaaf-studio.sh --fast           → skip tests @slow
 
 set -euo pipefail
 
 LAYER=""
 SMOKE_ONLY=false
+FAST=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --layer) LAYER="$2"; shift 2 ;;
         --smoke) SMOKE_ONLY=true; shift ;;
-        *) echo "Usage: $0 [--layer 1|2|3|4] [--smoke]"; exit 1 ;;
+        --fast)  FAST=true; shift ;;
+        *) echo "Usage: $0 [--layer 1|2|3|4|all] [--smoke] [--fast]"; exit 1 ;;
     esac
 done
 
+# --layer all = pas de filtre
+[[ "$LAYER" == "all" ]] && LAYER=""
+
 PASS=0
 FAIL=0
+WARN=0
 
 _run() {
     local label="$1"; shift
     if "$@" &>/dev/null; then
-        echo "[OK]  $label"
+        echo "[OK]   $label"
         PASS=$((PASS+1))
     else
         echo "[FAIL] $label"
@@ -38,12 +46,23 @@ _run() {
 
 _pytest() {
     local label="$1"; shift
-    if python -m pytest "$@" -q --tb=short 2>&1 | tail -1 | grep -q "passed"; then
-        echo "[OK]  $label"
+    local output
+    output=$(python -m pytest "$@" -q --tb=short 2>&1)
+    local last
+    last=$(echo "$output" | tail -1)
+
+    if echo "$last" | grep -q "passed"; then
+        echo "[OK]   $label"
         PASS=$((PASS+1))
+    elif echo "$last" | grep -q "skipped" && ! echo "$last" | grep -q "failed\|error"; then
+        # Tous les tests skippés (ex: benchmark_calibration sans réseau)
+        local n_skip
+        n_skip=$(echo "$last" | grep -oP '\d+ skipped' | grep -oP '\d+' || echo "?")
+        echo "[WARN] $label : ${n_skip} skipped (réseau requis ?)"
+        WARN=$((WARN+1))
     else
         echo "[FAIL] $label"
-        python -m pytest "$@" -q --tb=short 2>&1 | tail -5
+        echo "$output" | tail -5
         FAIL=$((FAIL+1))
     fi
 }
@@ -77,6 +96,10 @@ from layer3_validation.metis_q3_ema_stability import run_q3
 from layer3_validation.metis_q4_dsr import run_q4
 "
 
+_run "layer4_decision imports" python -c "
+from layer4_decision import KBManager, NTrialsTracker, DSIGMapper
+"
+
 _run "compute_cnsr smoke test" python -c "
 import numpy as np, pandas as pd
 from layer1_engine import compute_cnsr
@@ -98,9 +121,8 @@ if [[ -z "$LAYER" || "$LAYER" == "1" ]]; then
     echo ""
     echo "── Layer 1 — Engine ──"
     _pytest "test_layer1_backtester" tests/test_layer1_backtester.py
-    _pytest "test_layer1_metrics" tests/test_layer1_metrics.py 2>/dev/null || \
-        _run "test_layer1_metrics (skip if absent)" true
-    _pytest "test_benchmark_calibration" tests/test_benchmark_calibration.py
+    _pytest "test_layer1_metrics" tests/test_layer1_metrics.py
+    _pytest "test_benchmark_calibration (Gate 0)" tests/test_benchmark_calibration.py
 fi
 
 # ── Layer 2 ──────────────────────────────────────────────────────────────────
@@ -108,8 +130,14 @@ if [[ -z "$LAYER" || "$LAYER" == "2" ]]; then
     echo ""
     echo "── Layer 2 — PAF ──"
     _pytest "test_layer2_paf" tests/test_layer2_paf.py
-    _pytest "test_layer2_paf_adversarial (non-slow)" \
-        tests/test_layer2_paf_adversarial.py -m "not slow"
+    if $FAST; then
+        echo "[WARN] PAF adversarial slow — skipped (--fast)"
+        WARN=$((WARN+1))
+        _pytest "test_layer2_paf_adversarial (non-slow)" \
+            tests/test_layer2_paf_adversarial.py -m "not slow"
+    else
+        _pytest "test_layer2_paf_adversarial" tests/test_layer2_paf_adversarial.py
+    fi
 fi
 
 # ── Layer 3 ──────────────────────────────────────────────────────────────────
@@ -123,9 +151,10 @@ fi
 if [[ -z "$LAYER" || "$LAYER" == "4" ]]; then
     echo ""
     echo "── Layer 4 — KB + D-SIG ──"
-    _pytest "test_layer4_dsig (7 tests)" tests/test_layer4_dsig.py
+    _pytest "test_layer4_dsig" tests/test_layer4_dsig.py
     if python -m pytest tests/test_layer4_dsig.py::test_gate1_b5050_score_range -q --tb=short 2>&1 | grep -q "passed"; then
-        echo "[OK]  Gate 1 — score(B_5050) ∈ [72,78] — v0.4→v1.0 autorisé"
+        echo "[OK]   Gate 1 — score(B_5050) ∈ [72,78] — v0.4→v1.0 autorisé"
+        PASS=$((PASS+1))
     else
         echo "[FAIL] Gate 1 — score(B_5050) hors [72,78]"
         FAIL=$((FAIL+1))
@@ -134,7 +163,11 @@ fi
 
 echo ""
 echo "────────────────────────────────────────"
-echo "  Résultat : $PASS OK, $FAIL FAIL"
+if [[ $WARN -gt 0 ]]; then
+    echo "  Résultat : $PASS OK, $FAIL FAIL, $WARN WARN"
+else
+    echo "  Résultat : $PASS OK, $FAIL FAIL"
+fi
 echo "════════════════════════════════════════"
 echo ""
 
