@@ -1,6 +1,6 @@
 # tools/local/test-qaaf-studio.ps1
 # QAAF Studio -- Script de synchronisation et tests complets
-# Usage : .\tools\local\test-qaaf-studio.ps1 [-SkipSync] [-Fast] [-Layer <1|2|3|all>]
+# Usage : .\tools\local\test-qaaf-studio.ps1 [-SkipSync] [-Fast] [-Layer <1|2|3|4|all>]
 #
 # Options :
 #   -SkipSync   : ne pas faire git pull (si deja a jour)
@@ -345,6 +345,28 @@ if ($Layer -eq "all" -or $Layer -eq "3") {
         -ExpectedCount "11" | Out-Null
 }
 
+# -- Layer 4 : KB + D-SIG ----------------------------------------------------
+if ($Layer -eq "all" -or $Layer -eq "4") {
+    Write-Header "Layer 4 -- KB + D-SIG"
+
+    Invoke-PytestSuite `
+        -SuiteName     "KB Manager + N_trials + D-SIG mapper" `
+        -TestPath      "tests/test_layer4_dsig.py" `
+        -ExpectedCount "7" | Out-Null
+
+    $gate1Exit = Invoke-PytestSuite `
+        -SuiteName     "Gate 1 -- calibrage D-SIG (B_5050)" `
+        -TestPath      "tests/test_layer4_dsig.py::test_gate1_b5050_score_range" `
+        -ExpectedCount "1"
+
+    if ($gate1Exit -ne 0) {
+        Write-Fail "GATE 1 ECHOUEE -- score(B_5050) hors [72, 78]"
+        Write-Fail "Verifier DSIGMapper et profiles.yaml"
+    } else {
+        Write-OK "GATE 1 VERTE -- passage v0.4 -> v1.0 autorise"
+    }
+}
+
 # -- Sessions ----------------------------------------------------------------
 if ($Layer -eq "all") {
     Write-Header "Sessions -- Tests signaux"
@@ -377,7 +399,7 @@ if ($TotalFail -eq 0) {
     Write-Host "  [OK] Pret pour la prochaine session Claude Code." -ForegroundColor Green
 } else {
     Write-Host "  [FAIL] $TotalFail test(s) en echec -- corriger avant de continuer." -ForegroundColor Red
-    Write-Host "  Conseil : relancer avec -Layer 1, -Layer 2 ou -Layer 3 pour isoler." -ForegroundColor Yellow
+    Write-Host "  Conseil : relancer avec -Layer 1, -Layer 2, -Layer 3 ou -Layer 4 pour isoler." -ForegroundColor Yellow
 }
 
 Write-Host ""

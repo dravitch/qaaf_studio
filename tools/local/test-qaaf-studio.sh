@@ -6,6 +6,7 @@
 #   ./test-qaaf-studio.sh --layer 1    → Layer 1 uniquement
 #   ./test-qaaf-studio.sh --layer 2    → Layer 2 uniquement
 #   ./test-qaaf-studio.sh --layer 3    → Layer 3 uniquement
+#   ./test-qaaf-studio.sh --layer 4    → Layer 4 uniquement
 #   ./test-qaaf-studio.sh --smoke      → smoke tests uniquement (import + CNSR)
 
 set -euo pipefail
@@ -17,7 +18,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --layer) LAYER="$2"; shift 2 ;;
         --smoke) SMOKE_ONLY=true; shift ;;
-        *) echo "Usage: $0 [--layer 1|2|3] [--smoke]"; exit 1 ;;
+        *) echo "Usage: $0 [--layer 1|2|3|4] [--smoke]"; exit 1 ;;
     esac
 done
 
@@ -116,6 +117,19 @@ if [[ -z "$LAYER" || "$LAYER" == "3" ]]; then
     echo ""
     echo "── Layer 3 — MÉTIS ──"
     _pytest "test_layer3_metis" tests/test_layer3_metis.py
+fi
+
+# ── Layer 4 ──────────────────────────────────────────────────────────────────
+if [[ -z "$LAYER" || "$LAYER" == "4" ]]; then
+    echo ""
+    echo "── Layer 4 — KB + D-SIG ──"
+    _pytest "test_layer4_dsig (7 tests)" tests/test_layer4_dsig.py
+    if python -m pytest tests/test_layer4_dsig.py::test_gate1_b5050_score_range -q --tb=short 2>&1 | grep -q "passed"; then
+        echo "[OK]  Gate 1 — score(B_5050) ∈ [72,78] — v0.4→v1.0 autorisé"
+    else
+        echo "[FAIL] Gate 1 — score(B_5050) hors [72,78]"
+        FAIL=$((FAIL+1))
+    fi
 fi
 
 echo ""
