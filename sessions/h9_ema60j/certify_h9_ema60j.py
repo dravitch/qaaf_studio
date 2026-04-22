@@ -207,16 +207,16 @@ def run(skip_q2: bool = False, fast: bool = False) -> dict:
     mif_summary.print_summary()
 
     if "FAIL" in mif_summary.verdict:
-        if not fast:
-            # En mode complet, arrêt immédiat sur échec MIF
+        if not fast and not force_metis:
+            # En mode complet, arrêt immédiat sur échec MIF (sauf --force-metis)
             kb.record_verdict(HYPOTHESIS, "suspendu",
-                              notes=f"MIF {mif_summary.verdict}")
+                            notes=f"MIF {mif_summary.verdict}")
             return {"verdict": mif_summary.verdict, "stopped": "MIF"}
         else:
-            # En mode fast (test), continuer malgré l'échec MIF
-            print(f"\n⚠️  MIF {mif_summary.verdict} — mode fast, pipeline continue...")
-
-
+            # En mode fast OU --force-metis : continuer malgré l'échec MIF
+            reason = "mode fast" if fast else "--force-metis"
+            print(f"\n⚠️  MIF {mif_summary.verdict} — {reason}, pipeline continue...")
+            
     # ── 7. MÉTIS ─────────────────────────────────────────────────────────
     print("\n" + "─"*62)
     metis_runner = METISRunner(
@@ -312,6 +312,10 @@ if __name__ == "__main__":
                         help="Skip MÉTIS Q2 (permutation, ~5 min)")
     parser.add_argument("--fast",    action="store_true",
                         help="Mode test : n_perm=500, ema_step=10")
+    # Dans le parser argparse existant, ajouter :
+    parser.add_argument("--force-metis", action="store_true",
+        help="Continue vers METIS même si MIF échoue (diagnostic uniquement)")
+
     args = parser.parse_args()
 
     result = run(skip_q2=args.skip_q2, fast=args.fast)

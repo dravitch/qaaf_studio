@@ -1,0 +1,26 @@
+date: null
+hypothesis: H9+EMA60j+MA200
+famille: EMA_span_variants
+N_trials: 103
+variants:
+  hard:
+    statut: en_cours
+    cnsr_oos: null
+    mif_phase1: null
+    metis_verdict: null
+    dsig_score: null
+  soft:
+    statut: en_cours
+    cnsr_oos: null
+    mif_phase1: null
+    metis_verdict: null
+    dsig_score: null
+reference_h9_ema60j:
+  cnsr_oos: 1.285
+  metis_verdict: ARCHIVE_FAIL_Q2_Q4
+  dsig_score: 59
+  date: '2026-04-22'
+notes: >
+  Filtre regime MA200 sur BTC. Motivation : MIF G1/G2/G3 FAIL sur H9+EMA60j.
+  Question : la MA200 ameliore-t-elle la robustesse en bear market ?
+  N_trials passe de 101 a 103 (2 nouvelles variantes dans la famille).

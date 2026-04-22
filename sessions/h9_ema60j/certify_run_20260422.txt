@@ -1,0 +1,74 @@
+﻿
+==============================================================
+  QAAF STUDIO 3.0 ÔÇö SESSION DE CERTIFICATION
+  Hypoth├¿se : H9+EMA60j
+  Famille   : EMA_span_variants | N_trials = 101
+  M├ëTIS     : Q1Q2Q3Q4 | n_perm=10000 | ema_step=5
+  Mode      : COMPLET
+==============================================================
+
+­ƒôí Chargement donn├®es ...
+   1922 jours charg├®s (2019-09-27 00:00:00 ÔåÆ 2024-12-30 00:00:00)
+
+­ƒôè Benchmarks passifs (CNSR-USD OOS) ...
+  B_5050 CNSR = 1.343  (KB : 1.73)
+  B_BTC  CNSR = 1.244  (KB : 1.53)
+  B_PAXG CNSR = 0.709
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+PAF : r├®sultats charg├®s depuis KB (certifi├® 2026-04-01)
+  D1 : HIERARCHIE_CONFIRMEE
+  D2 : REGIMES_NEUTRES
+  D3 : H9_LISSE_SUPERIEUR
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+M├®triques OOS H9+EMA60j :
+  CNSR-USD-Fed : 1.285  (KB : 1.76)
+  Sortino      : 1.928  (KB : 2.10)
+  Max DD %     : 13.6%   (KB : 14.5%)
+  DSR(N=101) : 0.3246  ÔÜá´©Å
+
+ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+=======================================================
+MIF v5.0 ÔÇö H9+EMA60j
+=======================================================
+
+ÔÜÖ´©Å  MIF Phase 0 ÔÇö Tests d'isolation (T1-T6) ...
+  Ô£à T1 D├®rive structurelle F1              CNSR=-0.680  std_alloc=0.0555
+  Ô£à T2 Kurtosis extr├¬me F2                 CNSR=-1.228  kurtosis=3.5
+  Ô£à T3 Corr├®lation oscillante F3           CNSR=0.385  std_alloc=0.0663
+  Ô£à T4 Ratio de volatilit├® F4              CNSR=-0.275  vol_ratio=3.87
+  Ô£à T5 Asym├®trie directionnelle F5         CNSR=0.707  half_delta=0.0176
+  Ô£à T6 R├®gime crash                        CNSR=-2.752  crash_stability
+
+ÔÜÖ´©Å  MIF Phase 1 ÔÇö G├®n├®ralisation OOS (G1-G5) ...
+  ­ƒö┤ G1 Bear market               CNSR=-1.630  bench=-1.516 | delta=-0.115
+  ­ƒö┤ G2 March├® lat├®ral            CNSR=-1.219  bench=-1.209 | delta=-0.009
+  ­ƒö┤ G3 Crash                     CNSR=-1.245  bench=-1.156 | delta=-0.089
+  Ô£à G4 Standard                  CNSR=-0.874  bench=-0.880 | delta=+0.006
+  Ô£à G5 Standard long             CNSR=0.912  bench=0.801 | delta=+0.110
+
+=======================================================
+MIF v5.0 SUMMARY ÔÇö H9+EMA60j
+=======================================================
+  Ô£à T1 D├®rive structurelle F1                CNSR=-0.680
+  Ô£à T2 Kurtosis extr├¬me F2                   CNSR=-1.228
+  Ô£à T3 Corr├®lation oscillante F3             CNSR=0.385
+  Ô£à T4 Ratio de volatilit├® F4                CNSR=-0.275
+  Ô£à T5 Asym├®trie directionnelle F5           CNSR=0.707
+  Ô£à T6 R├®gime crash                          CNSR=-2.752
+  ­ƒö┤ G1 Bear market                           ÔÇö
+  ­ƒö┤ G2 March├® lat├®ral                        ÔÇö
+  ­ƒö┤ G3 Crash                                 ÔÇö
+  Ô£à G4 Standard                              ÔÇö
+  Ô£à G5 Standard long                         ÔÇö
+
+VERDICT : FAIL_PHASE_1
+  Arr├¬t Phase 1 ÔÇö corriger avant de continuer.
+
+=== Log JSON ===
+{
+  "verdict": "FAIL_PHASE_1",
+  "stopped": "MIF"
+}

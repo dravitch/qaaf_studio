@@ -1,1 +1,29 @@
-{}
+date: '2026-04-22'
+hypothesis: H9+EMA60j
+metis:
+  cnsr_oos: 1.334
+  q1:
+    median_cnsr: 1.0014
+    n_pass: 4
+    verdict: PASS
+  q2:
+    cnsr_obs: 1.334
+    pvalue: 0.518
+    verdict: FAIL
+  q3:
+    cnsr_target: -0.0905
+    is_spike: false
+    verdict: PASS
+  q4:
+    dsr: 0.3497
+    n_trials: 101
+    verdict: FAIL
+  verdict: ARCHIVE_FAIL_Q2_Q4
+metrics:
+  cnsr_usd_fed: 1.285
+  dsig_score: 59
+  dsr: 0.3246
+  max_dd_pct: 13.55
+  sortino: 1.928
+notes: MÉTIS Q1Q2Q3Q4 | N=101 | MIF FAIL_PHASE_1
+verdict: archive
