@@ -114,3 +114,37 @@ hypothese:
     OOS 2023-2024 est un bull market exceptionnel (B_5050 CNSR ≈ 1.73).
     MÉTIS Q2 (permutation) isole ce qui vient de la règle vs du régime.
     N_trials = 101 conservateur (grille complète 20j-120j inclusive).
+
+date: '2026-04-22'
+hypothesis: H9+EMA60j
+verdict: ARCHIVE_FAIL_Q2_Q4
+metis:
+  cnsr_oos: 1.334
+  q1:
+    n_pass: 4
+    median_cnsr: 1.0014
+    verdict: PASS
+  q2:
+    pvalue: 0.4873
+    cnsr_obs: 1.334
+    verdict: FAIL
+  q3:
+    cnsr_target: -0.0905
+    is_spike: false
+    verdict: PASS
+  q4:
+    dsr: 0.3497
+    n_trials: 101
+    verdict: FAIL
+  verdict: ARCHIVE_FAIL_Q2_Q4
+metrics:
+  cnsr_usd_fed: 1.285
+  sortino: 1.928
+  max_dd_pct: 13.6
+  dsr: 0.3246
+  dsig_score: 59
+notes: >
+  Certification complète 2026-04-22. 10 000 permutations sur données réelles.
+  MIF FAIL_PHASE_1 (G1/G2/G3 bear/lateral/crash). Q2 p=0.487 stable.
+  Signal existe (Q1 4/5) mais non distinguable de B_5050 après permutation.
+  Candidat naturel : H9+EMA60j+MA200 pour corriger les régimes adverses.

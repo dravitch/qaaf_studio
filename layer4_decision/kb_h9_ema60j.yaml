@@ -8,7 +8,7 @@ metis:
     verdict: PASS
   q2:
     cnsr_obs: 1.334
-    pvalue: 0.518
+    pvalue: 0.4873
     verdict: FAIL
   q3:
     cnsr_target: -0.0905

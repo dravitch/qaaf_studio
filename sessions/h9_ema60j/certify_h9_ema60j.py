@@ -87,7 +87,7 @@ def h9_ema_strategy(r_pair: pd.Series, params: dict) -> pd.Series:
 
 # ── Session principale ────────────────────────────────────────────────────────
 
-def run(skip_q2: bool = False, fast: bool = False) -> dict:
+def run(skip_q2: bool = False, fast: bool = False, force_metis: bool = False) -> dict:
     n_perm   = 500 if fast else 10_000
     ema_step = 10  if fast else 5
     metis_q  = "Q1Q3Q4" if skip_q2 else "Q1Q2Q3Q4"
@@ -318,7 +318,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    result = run(skip_q2=args.skip_q2, fast=args.fast)
+    result = run(skip_q2=args.skip_q2, fast=args.fast, force_metis=args.force_metis)
     print("\n=== Log JSON ===")
     print(json.dumps(result, indent=2, ensure_ascii=False, default=str))
     sys.exit(0)

@@ -22,20 +22,12 @@ lentilles:
     notes: 'PAF certifié Avril 2026. MÉTIS Q1/Q2/Q3/Q4 à compléter. N_trials=101 (grille
       EMA 20j-120j inclusive).
 
-  - nom: H9+EMA60j+MA200_hard
-    priorite: 2
-    famille: EMA_span_variants
-    N_trials_famille: 103
-    description: >
-      Filtre regime hard — 0% BTC quand BTC < MA200(200j).
-      Motivation : corriger MIF G1/G2/G3 FAIL de H9+EMA60j.
+      - nom: H9+EMA60j+MA200_hard priorite: 2 famille: EMA_span_variants N_trials_famille:
+      103 description: > Filtre regime hard — 0% BTC quand BTC < MA200(200j). Motivation
+      : corriger MIF G1/G2/G3 FAIL de H9+EMA60j.
 
-  - nom: H9+EMA60j+MA200_soft
-    priorite: 2
-    famille: EMA_span_variants
-    N_trials_famille: 103
-    description: >
-      Filtre regime soft — 50% allocation H9 quand BTC < MA200(200j).
+      - nom: H9+EMA60j+MA200_soft priorite: 2 famille: EMA_span_variants N_trials_famille:
+      103 description: > Filtre regime soft — 50% allocation H9 quand BTC < MA200(200j).
       Alternative moins agressive au filtre hard.
 
       '
