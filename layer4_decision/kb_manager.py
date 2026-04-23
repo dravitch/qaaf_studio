@@ -149,7 +149,7 @@ class KBManager:
     def pre_session_check(self, hypothesis: str, family: str) -> dict:
         """Returns {"recommendation": "PROCEED"} or {"recommendation": "SKIP_DUPLICATE"}."""
         if self.hyp_path and self.hyp_path.exists():
-            data = yaml.safe_load(self.hyp_path.read_text(encoding="utf-8")) or {}
+            data = self._load_hyp()
             if data.get("verdict") in ("certifie", "certified", "CERTIFIE"):
                 return {
                     "recommendation": "SKIP_DUPLICATE",
@@ -162,31 +162,46 @@ class KBManager:
         hypothesis: str,
         verdict: str,
         metrics: dict = None,
-        notes: str = "",
+        notes: str = None,
     ) -> None:
+        """
+        Met à jour le fichier KB hypothèse avec le verdict final.
+        Merge dans le dict existant — ne jamais appender.
+        """
         if self.hyp_path is None:
             return
-        data = {}
-        if self.hyp_path.exists():
-            data = yaml.safe_load(self.hyp_path.read_text(encoding="utf-8")) or {}
-        data.update({
-            "hypothesis": hypothesis,
-            "verdict": verdict,
-            "date": str(date.today()),
-            "notes": notes,
-        })
+        data = self._load_hyp()
+        data["date"]    = str(date.today())
+        data["verdict"] = verdict
         if metrics:
-            data["metrics"] = metrics
-        self._atomic_write_path(self.hyp_path, data)
+            if not isinstance(data.get("metrics"), dict):
+                data["metrics"] = {}
+            data["metrics"].update(metrics)
+        if notes:
+            existing = data.get("notes") or ""
+            data["notes"] = notes if not existing else existing
+        self._save_hyp(data)
 
     def update_metis(self, metis_dict: dict) -> None:
+        """Met à jour la section metis dans le dict existant."""
         if self.hyp_path is None:
             return
-        data = {}
-        if self.hyp_path.exists():
-            data = yaml.safe_load(self.hyp_path.read_text(encoding="utf-8")) or {}
-        data.setdefault("metis", {}).update(metis_dict)
-        self._atomic_write_path(self.hyp_path, data)
+        data = self._load_hyp()
+        if not isinstance(data.get("metis"), dict):
+            data["metis"] = {}
+        data["metis"].update(metis_dict)
+        self._save_hyp(data)
+
+    def _load_hyp(self) -> dict:
+        if self.hyp_path and self.hyp_path.exists():
+            return yaml.safe_load(self.hyp_path.read_text(encoding="utf-8")) or {}
+        return {}
+
+    def _save_hyp(self, data: dict) -> None:
+        self.hyp_path.write_text(
+            yaml.dump(data, allow_unicode=True, sort_keys=False),
+            encoding="utf-8",
+        )
 
     # ── Private ──────────────────────────────────────────────────────────────
 

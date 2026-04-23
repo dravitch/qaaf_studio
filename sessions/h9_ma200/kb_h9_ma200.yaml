@@ -1,0 +1,60 @@
+hypothese:
+  nom: H9+EMA60j+MA200
+  statut: en_cours
+  famille: EMA_span_variants
+  N_trials_famille: 103
+  description: 'H9+EMA60j avec filtre de regime MA200 sur BTC. Motivation : MIF Phase
+    1 G1/G2/G3 FAIL sur H9+EMA60j — sous-performance documentee en bear market, marche
+    lateral, crash. Question : MA200 corrige-t-elle ce deficit ?
+
+    '
+  split:
+    label: PAXG_BTC_config
+    is_start: '2020-06-01'
+    is_end: '2023-05-31'
+    oos_start: '2023-06-01'
+    oos_end: '2024-12-31'
+  paf:
+    D1: HIERARCHIE_CONFIRMEE
+    D2: REGIMES_NEUTRES
+    D3: H9_LISSE_SUPERIEUR
+    date_paf: '2026-04-01'
+    source: charge depuis KB H9+EMA60j — filtre MA200 ajoute sur signal certifie
+  variants:
+    hard:
+      statut: en_cours
+      description: 0% BTC quand BTC < MA200(200j)
+    soft:
+      statut: en_cours
+      description: 50% allocation H9 quand BTC < MA200(200j)
+  reference_h9_ema60j:
+    cnsr_oos: 1.285
+    metis_verdict: ARCHIVE_FAIL_Q2_Q4
+    dsig_score: 59
+    date: '2026-04-22'
+date: '2026-04-23'
+verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+metis:
+  variants:
+    hard:
+      verdict: ARCHIVE_FAIL_Q1_Q4
+      cnsr_oos: -0.353
+      dsig_score: 23
+      mif_p1: FAIL
+      q1: FAIL
+      q2: PASS
+    soft:
+      verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+      cnsr_oos: -0.09
+      dsig_score: 23
+      mif_p1: FAIL
+      q1: FAIL
+      q2: FAIL
+metrics:
+  best_variant: soft
+  best_cnsr_oos: -0.09
+  best_dsr: 0.0078
+  best_dsig: 23
+  hard_cnsr: -0.353
+  soft_cnsr: -0.09
+notes: MÉTIS Q1Q2Q3Q4 | N=103 | hard=-0.353 soft=-0.090

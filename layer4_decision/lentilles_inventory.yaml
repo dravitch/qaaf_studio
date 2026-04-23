@@ -135,23 +135,22 @@ lentilles:
         Approximation de MR déguisée en géométrie.
       notes: ""
 
-  active:
-
     - nom: H9+EMA60j
       id: "20260419-002"
       famille: EMA_span_variants
-      status: EN_COURS
-      score: null
-      label: EN_COURS
+      status: ARCHIVE
+      metis_verdict: ARCHIVE_FAIL_Q2_Q4
+      score: 59
+      label: DEGRADED
       color: ORANGE
-      trend: STABLE
-      trend_source: metis_q1
+      trend: N_A
+      trend_source: N_A
       N_trials_famille: 101
       baseline_cycles: 0
-      last_verified: "2026-04-19"
-      ttl_days: 180
-      cnsr_oos: 1.76
-      cnsr_usd_fed: 1.76
+      last_verified: "2026-04-22"
+      ttl_days: null
+      cnsr_oos: 1.285
+      cnsr_usd_fed: 1.285
       max_dd_pct: 14.5
       sortino: 2.10
       calmar: 0.94
@@ -161,20 +160,33 @@ lentilles:
       paf_d1: HIERARCHIE_CONFIRMEE
       paf_d2: REGIMES_NEUTRES
       paf_d3: H9_LISSE_SUPERIEUR
-      metis_q1: en_cours
-      metis_q2: en_cours
-      metis_q3: en_cours
-      metis_q4: en_cours
-      raison_archive: null
+      metis_q1: PASS
+      metis_q2: FAIL
+      metis_q3: N_A
+      metis_q4: FAIL
+      raison_archive: >
+        MÉTIS Q2 FAIL (permutation p-value >= 0.05) — alpha non démontré.
+        MÉTIS Q4 FAIL (DSR < 0.95 avec N=101).
+        Signal base insuffisant seul — variante MA200 en test (Sprint A).
       notes: >
-        PAF certifié Avril 2026. MÉTIS Q1/Q2/Q3/Q4 à compléter.
-        N_trials=101 (grille EMA 20j-120j inclusive).
+        PAF certifié Avril 2026. MÉTIS complété Avril 2026.
+        Filtre MA200 testé dans sessions/h9_ma200/ (Sprint A).
+
+  active: []
 
   queue:
 
-    - nom: H9+filtre_bear_MA200
+    - nom: H9+EMA60j+MA200_hard
       priorite: 2
-      description: "MA200 sur BTC comme filtre de régime simple"
+      famille: EMA_span_variants
+      N_trials_famille: 103
+      description: "0% BTC quand BTC < MA200. Corrige MIF G1/G2/G3 FAIL."
+
+    - nom: H9+EMA60j+MA200_soft
+      priorite: 2
+      famille: EMA_span_variants
+      N_trials_famille: 103
+      description: "50% allocation H9 quand BTC < MA200. Variante douce."
 
     - nom: H9_lisse_ETH_BTC
       priorite: 3
