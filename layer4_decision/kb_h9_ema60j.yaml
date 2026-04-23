@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 date: '2026-04-22'
 hypothesis: H9+EMA60j
 metis:
@@ -27,3 +28,34 @@ metrics:
   sortino: 1.928
 notes: MÉTIS Q1Q2Q3Q4 | N=101 | MIF FAIL_PHASE_1
 verdict: archive
+=======
+date: '2026-04-21'
+hypothesis: H9+EMA60j
+metis:
+  cnsr_oos: 0.1178
+  q1:
+    median_cnsr: -0.4867
+    n_pass: 0
+    verdict: FAIL
+  q2:
+    cnsr_obs: 0.1178
+    pvalue: 0.16
+    verdict: FAIL
+  q3:
+    cnsr_target: 0.0633
+    is_spike: false
+    verdict: PASS
+  q4:
+    dsr: 0.0133
+    n_trials: 101
+    verdict: FAIL
+  verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+metrics:
+  cnsr_usd_fed: 0.19
+  dsig_score: 30
+  dsr: 0.0158
+  max_dd_pct: 28.33
+  sortino: 0.285
+notes: MIF FAIL_PHASE_1
+verdict: suspendu
+>>>>>>> 64722df (feat(layer4): update decision YAMLs)

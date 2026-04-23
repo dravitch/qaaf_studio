@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 lentilles:
   active:
   - N_trials_famille: 101
@@ -187,3 +188,186 @@ lentilles:
   - description: Généralisation H9+EMA60j sur ETH/BTC — après certification PAXG/BTC
     nom: H9_lisse_ETH_BTC
     priorite: 3
+=======
+lentilles:
+  active:
+  - N_trials_famille: 101
+    baseline_cycles: 0
+    calmar: 0.94
+    cnsr_oos: 1.76
+    cnsr_usd_fed: 0.19
+    color: ORANGE
+    dsig_score: 30
+    famille: EMA_span_variants
+    frais_usd: 34.0
+    id: 20260419-002
+    label: EN_COURS
+    last_verified: '2026-04-21'
+    max_dd_pct: 14.5
+    metis_q1: en_cours
+    metis_q2: en_cours
+    metis_q3: en_cours
+    metis_q4: en_cours
+    metis_verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+    nom: H9+EMA60j
+    notes: 'PAF certifié Avril 2026. MÉTIS Q1/Q2/Q3/Q4 à compléter. N_trials=101 (grille
+      EMA 20j-120j inclusive).
+
+      '
+    paf_d1: HIERARCHIE_CONFIRMEE
+    paf_d2: REGIMES_NEUTRES
+    paf_d3: H9_LISSE_SUPERIEUR
+    paf_verdict: H9_LISSE_SUPERIEUR
+    raison_archive: null
+    score: null
+    sortino: 2.1
+    status: ARCHIVE
+    std_alloc: 0.17
+    trades: 47
+    trend: STABLE
+    trend_source: metis_q1
+    ttl_days: 180
+  archivees:
+  - N_trials_famille: 1
+    baseline_cycles: 0
+    calmar: null
+    cnsr_oos: -0.8
+    cnsr_usd_fed: -0.8
+    color: GRAY
+    famille: mean_reversion
+    frais_usd: null
+    id: 20260101-001
+    label: N_A
+    last_verified: '2026-01-15'
+    max_dd_pct: null
+    metis_q1: N_A
+    metis_q2: N_A
+    metis_q3: N_A
+    metis_q4: N_A
+    nom: MR_pur
+    notes: ''
+    paf_d1: STOP
+    paf_d2: null
+    paf_d3: null
+    raison_archive: 'Mécanisme compris — mean-reversion simple sous dérive. Pas d''intérêt
+      seul.
+
+      '
+    score: null
+    sortino: null
+    status: ARCHIVE
+    std_alloc: null
+    trades: null
+    trend: N_A
+    trend_source: N_A
+    ttl_days: null
+  - N_trials_famille: 1
+    baseline_cycles: 0
+    calmar: null
+    cnsr_oos: 0.32
+    cnsr_usd_fed: 0.32
+    color: GRAY
+    famille: EMA_span_variants
+    frais_usd: null
+    id: 20260201-001
+    label: N_A
+    last_verified: '2026-02-10'
+    max_dd_pct: null
+    metis_q1: N_A
+    metis_q2: N_A
+    metis_q3: N_A
+    metis_q4: N_A
+    nom: H9_brut
+    notes: ''
+    paf_d1: HIERARCHIE_CONFIRMEE
+    paf_d2: null
+    paf_d3: null
+    raison_archive: 'Baseline utile. std_alloc trop élevée (0.259) — friction excessive.
+      Pas déployable seul.
+
+      '
+    score: null
+    sortino: null
+    status: ARCHIVE
+    std_alloc: 0.259
+    trades: null
+    trend: N_A
+    trend_source: N_A
+    ttl_days: null
+  - N_trials_famille: 1
+    baseline_cycles: 0
+    calmar: null
+    cnsr_oos: 0.99
+    cnsr_usd_fed: 0.99
+    color: GRAY
+    famille: geometric_regime
+    frais_usd: null
+    id: 20260215-001
+    label: N_A
+    last_verified: '2026-02-28'
+    max_dd_pct: null
+    metis_q1: N_A
+    metis_q2: N_A
+    metis_q3: N_A
+    metis_q4: N_A
+    nom: QAAF-R
+    notes: 'CNSR OOS 0.99 calculé avant correction de numéraire. Valeur indicative
+      seulement.
+
+      '
+    paf_d1: HIERARCHIE_CONFIRMEE
+    paf_d2: REGIMES_NEUTRES
+    paf_d3: ARTEFACT_LISSAGE
+    raison_archive: 'TPR_haut = 0% sous conditions réalistes. Mécanisme : artefact
+      de lissage, pas signal géométrique.
+
+      '
+    score: null
+    sortino: null
+    status: ARCHIVE
+    std_alloc: null
+    trades: null
+    trend: N_A
+    trend_source: N_A
+    ttl_days: null
+  - N_trials_famille: 1
+    baseline_cycles: 0
+    calmar: null
+    cnsr_oos: null
+    cnsr_usd_fed: null
+    color: GRAY
+    famille: geometric_regime
+    frais_usd: null
+    id: 20260301-001
+    label: N_A
+    last_verified: '2026-03-10'
+    max_dd_pct: null
+    metis_q1: N_A
+    metis_q2: N_A
+    metis_q3: N_A
+    metis_q4: N_A
+    nom: PhaseCoherence
+    notes: ''
+    paf_d1: HIERARCHIE_CONFIRMEE
+    paf_d2: REGIMES_NEUTRES
+    paf_d3: ARTEFACT_LISSAGE
+    raison_archive: 'Dégrade le signal à iso-variance (PAF D3). Approximation de MR
+      déguisée en géométrie.
+
+      '
+    score: null
+    sortino: null
+    status: ARCHIVE
+    std_alloc: null
+    trades: null
+    trend: N_A
+    trend_source: N_A
+    ttl_days: null
+  queue:
+  - description: MA200 sur BTC comme filtre de régime simple
+    nom: H9+filtre_bear_MA200
+    priorite: 2
+  - description: Généralisation H9+EMA60j sur ETH/BTC — après certification PAXG/BTC
+    nom: H9_lisse_ETH_BTC
+    priorite: 3
+>>>>>>> 64722df (feat(layer4): update decision YAMLs)
