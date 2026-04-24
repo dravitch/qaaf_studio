@@ -62,9 +62,13 @@ def test_kb_manager_load(tmp_path):
     inv = tmp_path / "lentilles_inventory.yaml"
     shutil.copy("layer4_decision/lentilles_inventory.yaml", inv)
     kb = KBManager(inv)
+    # H9+EMA60j archivée (Sprint A) — active est vide
     active = kb.get_active()
-    assert len(active) == 1
-    assert active[0]["nom"] == "H9+EMA60j"
+    assert len(active) == 0
+    archived = kb.get_archived()
+    h9 = next((l for l in archived if l["nom"] == "H9+EMA60j"), None)
+    assert h9 is not None
+    assert h9["status"] == "ARCHIVE"
 
 
 def test_kb_manager_stale(tmp_path):
