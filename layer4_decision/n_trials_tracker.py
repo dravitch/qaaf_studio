@@ -32,6 +32,23 @@ class NTrialsTracker:
     def get_all(self) -> dict:
         return dict(self._state)
 
+    def get_family_n_trials(self, family: str) -> int:
+        """
+        Reads N_trials_famille from the KB file.
+        Checks top-level and hypothese.N_trials_famille (KB YAML convention).
+        Fallback: returns the count stored in the tracker for this family.
+        """
+        if self.path.exists():
+            raw = yaml.safe_load(self.path.read_text(encoding="utf-8")) or {}
+            # Top-level (standalone tracker file)
+            if "N_trials_famille" in raw:
+                return int(raw["N_trials_famille"])
+            # Nested under hypothese (KB YAML convention)
+            hyp = raw.get("hypothese", {})
+            if "N_trials_famille" in hyp:
+                return int(hyp["N_trials_famille"])
+        return self._state.get(family, 1)
+
     def sync_from_inventory(self, inventory: dict) -> None:
         """Initialise depuis lentilles_inventory.yaml au démarrage du projet."""
         lentilles = inventory.get("lentilles", {})

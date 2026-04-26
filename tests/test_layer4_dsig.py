@@ -57,18 +57,25 @@ def test_dsig_paf_stop_cap():
 
 
 def test_kb_manager_load(tmp_path):
-    import shutil
+    """KBManager charge et sauvegarde proprement — indépendant du contenu réel."""
+    import yaml
     from layer4_decision.kb_manager import KBManager
-    inv = tmp_path / "lentilles_inventory.yaml"
-    shutil.copy("layer4_decision/lentilles_inventory.yaml", inv)
-    kb = KBManager(inv)
-    # H9+EMA60j archivée (Sprint A) — active est vide
-    active = kb.get_active()
-    assert len(active) == 0
-    archived = kb.get_archived()
-    h9 = next((l for l in archived if l["nom"] == "H9+EMA60j"), None)
-    assert h9 is not None
-    assert h9["status"] == "ARCHIVE"
+
+    kb_file = tmp_path / "kb_test.yaml"
+    inv_file = tmp_path / "inventory.yaml"
+    kb_file.write_text(
+        "hypothese:\n  nom: TEST\n  statut: en_cours\n", encoding="utf-8"
+    )
+    inv_file.write_text(
+        "lentilles:\n  active: []\n  archivees: []\n  queue: []\n", encoding="utf-8"
+    )
+
+    kb = KBManager(kb_file, inv_file)
+    kb.record_verdict("TEST", "ARCHIVE_FAIL_Q2", metrics={"cnsr_usd_fed": 1.2})
+
+    data = kb._load_hyp()
+    assert data["verdict"] == "ARCHIVE_FAIL_Q2"
+    assert data["metrics"]["cnsr_usd_fed"] == 1.2
 
 
 def test_kb_manager_stale(tmp_path):
@@ -83,10 +90,47 @@ def test_kb_manager_stale(tmp_path):
     assert KBManager(p).is_stale(KBManager(p).get_active()[0]) is True
 
 
+def test_load_hyp_multiblock_yaml(tmp_path):
+    """_load_hyp() sur un YAML multi-blocs doit charger le premier et émettre un warning."""
+    import yaml
+    from layer4_decision.kb_manager import KBManager
+
+    kb_file = tmp_path / "test_kb.yaml"
+    inv_file = tmp_path / "inv.yaml"
+    kb_file.write_text("a: 1\n---\nb: 2\n", encoding="utf-8")
+    inv_file.write_text(
+        "lentilles:\n  active: []\n  archivees: []\n", encoding="utf-8"
+    )
+    kb = KBManager(kb_file, inv_file)
+    with pytest.warns(UserWarning, match="multi-blocs"):
+        data = kb._load_hyp()
+    assert data == {"a": 1}
+
+
 def test_n_trials_tracker(tmp_path):
+    """NTrialsTracker incrémente correctement."""
     from layer4_decision.n_trials_tracker import NTrialsTracker
-    t = NTrialsTracker(tmp_path / "state.yaml")
-    assert t.register("EMA_span_variants") == 1
-    assert t.register("EMA_span_variants") == 2
-    t2 = NTrialsTracker(tmp_path / "state.yaml")
-    assert t2.get("EMA_span_variants") == 2
+    tracker = NTrialsTracker(tmp_path / "tracker.yaml")
+    tracker.register("H9+EMA60j")
+    tracker.register("H9+EMA60j")
+    assert tracker.get("H9+EMA60j") == 2
+
+
+def test_n_trials_tracker_get_family(tmp_path):
+    """get_family_n_trials lit N_trials_famille depuis le YAML si présent."""
+    import yaml
+    from layer4_decision.n_trials_tracker import NTrialsTracker
+
+    kb_file = tmp_path / "kb.yaml"
+    kb_file.write_text("N_trials_famille: 101\nhypothese:\n  nom: TEST\n", encoding="utf-8")
+    tracker = NTrialsTracker(kb_file)
+    assert tracker.get_family_n_trials("EMA_span_variants") == 101
+
+
+def test_n_trials_tracker_get_family_fallback(tmp_path):
+    """get_family_n_trials tombe en fallback sur le compteur si N_trials_famille absent."""
+    from layer4_decision.n_trials_tracker import NTrialsTracker
+    tracker = NTrialsTracker(tmp_path / "state.yaml")
+    tracker.register("EMA_span_variants")
+    tracker.register("EMA_span_variants")
+    assert tracker.get_family_n_trials("EMA_span_variants") == 2

@@ -117,6 +117,17 @@ python sessions/certify_h9_ema60j.py --fast --skip-q2
 
 ---
 
+## Scripts disponibles
+
+| Script | Rôle |
+|---|---|
+| `deploy.sh` | Commit + sync + push (avec fallback rebase Option B). Usage : `./deploy.sh -m "message"` |
+| `tools/local/test-qaaf-studio.sh` | Suite de tests CI locale. Usage : `bash tools/local/test-qaaf-studio.sh --layer all` |
+| `tools/local/test-qaaf-studio.ps1` | Équivalent Windows PowerShell |
+| `tools/cleanup_v2.py` | Nettoyage des fichiers temporaires. Usage : `python tools/cleanup_v2.py` (dry-run) |
+
+---
+
 ## Invariants du studio
 
 1. **Lump sum uniquement** pour la certification — DCA désactivé avec avertissement explicite.

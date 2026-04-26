@@ -193,9 +193,19 @@ class KBManager:
         self._save_hyp(data)
 
     def _load_hyp(self) -> dict:
-        if self.hyp_path and self.hyp_path.exists():
-            return yaml.safe_load(self.hyp_path.read_text(encoding="utf-8")) or {}
-        return {}
+        if not (self.hyp_path and self.hyp_path.exists()):
+            return {}
+        content = self.hyp_path.read_text(encoding="utf-8")
+        docs = list(yaml.safe_load_all(content))
+        non_empty = [d for d in docs if d]
+        if len(non_empty) > 1:
+            import warnings
+            warnings.warn(
+                f"KB {self.hyp_path} est multi-blocs ({len(non_empty)} documents YAML). "
+                f"Seul le premier est chargé. Exécuter tools/fix_kb_multiblock.py pour nettoyer.",
+                stacklevel=2,
+            )
+        return non_empty[0] if non_empty else {}
 
     def _save_hyp(self, data: dict) -> None:
         self.hyp_path.write_text(
