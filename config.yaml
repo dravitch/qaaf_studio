@@ -20,3 +20,4 @@ data:
   tickers:
     btc:  "BTC-USD"
     paxg: "PAXG-USD"
+    eth:  "ETH-USD"

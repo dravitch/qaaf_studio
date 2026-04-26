@@ -1,0 +1,53 @@
+hypothese:
+  nom: MR_pur
+  statut: historique
+  famille: mean_reversion
+  N_trials_famille: 1
+  description: 'Mean-reversion simple sur ratio PAXG/BTC. Baseline historique Sprint
+    C. Mécanisme : Z-score 20j sur log-prix, allocation inversement proportionnelle.
+
+    '
+  split:
+    label: PAXG_BTC_config
+    is_start: '2020-06-01'
+    is_end: '2023-05-31'
+    oos_start: '2023-06-01'
+    oos_end: '2024-12-31'
+  paf:
+    D1: STOP
+    D2: N_A
+    D3: N_A
+    date_paf: '2026-01-15'
+    source: historique pré-Studio (PAF direction 1)
+  notes: 'MR simple sous dérive. Pas d''intérêt seul. Rétro Sprint C Avril 2026 —
+    pipeline Studio complet.
+
+    '
+metis:
+  verdict: ARCHIVE_FAIL_Q1_Q2
+  cnsr_oos: 1.2538
+  q1:
+    verdict: FAIL
+    n_pass: 3
+    median_cnsr: 0.7918
+  q2:
+    verdict: FAIL
+    pvalue: 0.786
+    cnsr_obs: 1.2538
+  q3:
+    verdict: PASS
+    is_spike: false
+    cnsr_target: -0.0905
+  q4:
+    verdict: PASS
+    dsr: 0.9709
+    n_trials: 1
+date: '2026-04-26'
+verdict: archive
+metrics:
+  cnsr_usd_fed: -0.544
+  sortino: -0.663
+  max_dd_pct: 34.16
+  dsr: 0.2053
+  dsig_score: 20
+notes: MÉTIS Q1Q2Q3Q4 | N=1 | MIF FAIL_PHASE_1

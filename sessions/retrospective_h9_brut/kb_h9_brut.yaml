@@ -1,0 +1,53 @@
+hypothese:
+  nom: H9_brut
+  statut: historique
+  famille: EMA_span_variants
+  N_trials_famille: 101
+  description: 'H9 signal brut sans lissage EMA. Baseline avant variante H9+EMA60j.
+    std_alloc=0.259 (friction excessive). Pas déployable seul.
+
+    '
+  split:
+    label: PAXG_BTC_config
+    is_start: '2020-06-01'
+    is_end: '2023-05-31'
+    oos_start: '2023-06-01'
+    oos_end: '2024-12-31'
+  paf:
+    D1: HIERARCHIE_CONFIRMEE
+    D2: N_A
+    D3: N_A
+    date_paf: '2026-02-10'
+    source: historique pré-Studio (PAF direction 1)
+  notes: 'Baseline utile. std_alloc trop élevée (0.259) — friction excessive. N_trials=101
+    (famille EMA_span_variants actuelle). Rétro Sprint C Avril 2026.
+
+    '
+metis:
+  verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+  cnsr_oos: 1.2529
+  q1:
+    verdict: FAIL
+    n_pass: 3
+    median_cnsr: 0.7916
+  q2:
+    verdict: FAIL
+    pvalue: 0.328
+    cnsr_obs: 1.2529
+  q3:
+    verdict: PASS
+    is_spike: false
+    cnsr_target: -0.0905
+  q4:
+    verdict: FAIL
+    dsr: 0.3244
+    n_trials: 101
+date: '2026-04-26'
+verdict: archive
+metrics:
+  cnsr_usd_fed: -0.541
+  sortino: -0.659
+  max_dd_pct: 34.3
+  dsr: 0.0008
+  dsig_score: 20
+notes: MÉTIS Q1Q2Q3Q4 | N=101 | MIF FAIL_PHASE_1
