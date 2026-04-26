@@ -32,29 +32,29 @@ hypothese:
     metis_verdict: ARCHIVE_FAIL_Q2_Q4
     dsig_score: 59
     date: '2026-04-22'
-date: '2026-04-23'
+date: '2026-04-26'
 verdict: ARCHIVE_FAIL_Q1_Q2_Q4
 metis:
   variants:
     hard:
-      verdict: ARCHIVE_FAIL_Q1_Q4
-      cnsr_oos: -0.353
-      dsig_score: 23
+      verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+      cnsr_oos: 0.894
+      dsig_score: 59
       mif_p1: FAIL
       q1: FAIL
-      q2: PASS
+      q2: FAIL
     soft:
       verdict: ARCHIVE_FAIL_Q1_Q2_Q4
-      cnsr_oos: -0.09
-      dsig_score: 23
+      cnsr_oos: 1.082
+      dsig_score: 59
       mif_p1: FAIL
       q1: FAIL
       q2: FAIL
 metrics:
   best_variant: soft
-  best_cnsr_oos: -0.09
-  best_dsr: 0.0078
-  best_dsig: 23
-  hard_cnsr: -0.353
-  soft_cnsr: -0.09
+  best_cnsr_oos: 1.082
+  best_dsr: 0.223
+  best_dsig: 59
+  hard_cnsr: 0.894
+  soft_cnsr: 1.082
 notes: MÉTIS Q1Q2Q3Q4 | N=103 | hard=-0.353 soft=-0.090

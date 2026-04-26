@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
-# ============================================
-# deploy.sh – Safe Git Deploy Workflow
-# - Commit local changes
-# - Sync with origin/main via rebase
-# - If rebase conflicts: automatic "Option B" fallback:
-#     rescue branch -> rebase --abort -> reset --hard origin/main -> cherry-pick rescue
-# - Push to origin/main
+# deploy.sh — Script de déploiement QAAF Studio
 #
-# Usage (from repo root):
+# Rôle : commit et push automatique depuis l'environnement de développement.
+#        Vérifie l'absence de conflits avant de pousser.
+#        En cas d'échec rebase : fallback automatique Option B
+#        (rescue branch → rebase --abort → reset --hard origin/main → cherry-pick).
+# Usage : ./deploy.sh [message de commit optionnel]
 #   ./deploy.sh                    # stage+commit+sync+push
 #   ./deploy.sh --status           # status + last commits
 #   ./deploy.sh --pull             # pull (ff-only)
@@ -15,7 +13,7 @@
 #   ./deploy.sh --no-push          # commit+sync but do not push
 #   ./deploy.sh --push             # push only (after manual resolve)
 #   ./deploy.sh --no-verify        # bypass hooks (NOT recommended)
-# ============================================
+# Auteur : généré par Claude Code (Sprint merge, Avril 2026)
 
 set -euo pipefail
 

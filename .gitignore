@@ -72,6 +72,14 @@ secrets.yml
 check_imports.py
 debug_*.py
 
+# ── Logs de sessions ──────────────────────────────────────────────────────────
+sessions/**/*.txt
+sessions/**/results/*.txt
+
+# ── Résultats régénérables ────────────────────────────────────────────────────
+sessions/**/results/*.json
+sessions/**/results/*.csv
+
 # ── Fichiers temporaires ──────────────────────────────────────────────────────
 *.tmp
 *.bak
