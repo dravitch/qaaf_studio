@@ -4,63 +4,71 @@ lentilles:
   - N_trials_famille: 1
     baseline_cycles: 0
     calmar: null
-    cnsr_oos: -0.8
-    cnsr_usd_fed: -0.8
+    cnsr_oos: -0.544
+    cnsr_usd_fed: -0.544
     color: GRAY
     famille: mean_reversion
     frais_usd: null
     id: 20260101-001
     label: N_A
-    last_verified: '2026-01-15'
-    max_dd_pct: null
-    metis_q1: N_A
-    metis_q2: N_A
-    metis_q3: N_A
-    metis_q4: N_A
+    last_verified: '2026-04-26'
+    max_dd_pct: 34.16
+    metis_q1: FAIL
+    metis_q2: FAIL
+    metis_q3: PASS
+    metis_q4: PASS
+    metis_verdict: ARCHIVE_FAIL_Q1_Q2
     nom: MR_pur
-    notes: ''
-    paf_d1: STOP
-    paf_d2: null
-    paf_d3: null
-    raison_archive: 'Mécanisme compris — mean-reversion simple sous dérive. Pas d''intérêt
-      seul.
+    notes: 'Rétro Sprint C 2026-04-26. Studio CNSR-USD OOS 2023-2024. Pré-Studio était
+      -0.80 (numéraire différent).
 
       '
-    score: null
-    sortino: null
+    paf_d1: STOP
+    paf_d2: N_A
+    paf_d3: N_A
+    raison_archive: 'Mécanisme compris — mean-reversion simple sous dérive. Pas d''intérêt
+      seul. Studio confirme : ARCHIVE_FAIL_Q1_Q2.
+
+      '
+    score: 20
+    sortino: -0.663
     status: ARCHIVE
     std_alloc: null
     trades: null
     trend: N_A
     trend_source: N_A
     ttl_days: null
-  - N_trials_famille: 1
+  - N_trials_famille: 101
     baseline_cycles: 0
     calmar: null
-    cnsr_oos: 0.32
-    cnsr_usd_fed: 0.32
+    cnsr_oos: -0.541
+    cnsr_usd_fed: -0.541
     color: GRAY
     famille: EMA_span_variants
     frais_usd: null
     id: 20260201-001
     label: N_A
-    last_verified: '2026-02-10'
-    max_dd_pct: null
-    metis_q1: N_A
-    metis_q2: N_A
-    metis_q3: N_A
-    metis_q4: N_A
+    last_verified: '2026-04-26'
+    max_dd_pct: 34.3
+    metis_q1: FAIL
+    metis_q2: FAIL
+    metis_q3: PASS
+    metis_q4: FAIL
+    metis_verdict: ARCHIVE_FAIL_Q1_Q2_Q4
     nom: H9_brut
-    notes: ''
-    paf_d1: HIERARCHIE_CONFIRMEE
-    paf_d2: null
-    paf_d3: null
-    raison_archive: 'Baseline utile. std_alloc trop élevée (0.259) — friction excessive.
-      Pas déployable seul.
+    notes: 'Rétro Sprint C 2026-04-26. N_trials=101 (famille actuelle). Pré-Studio
+      CNSR=0.32 (IS, période différente). DSR=0.0008 avec N=101.
 
       '
-    score: null
-    sortino: null
+    paf_d1: HIERARCHIE_CONFIRMEE
+    paf_d2: N_A
+    paf_d3: N_A
+    raison_archive: 'Baseline utile en IS. std_alloc trop élevée (0.259) — friction
+      excessive. Studio OOS : CNSR négatif, N=101 efface la significativité.
+
+      '
+    score: 20
+    sortino: -0.659
     status: ARCHIVE
     std_alloc: 0.259
     trades: null
@@ -70,33 +78,34 @@ lentilles:
   - N_trials_famille: 1
     baseline_cycles: 0
     calmar: null
-    cnsr_oos: 0.99
-    cnsr_usd_fed: 0.99
+    cnsr_oos: 1.68
+    cnsr_usd_fed: 1.68
     color: GRAY
     famille: geometric_regime
     frais_usd: null
     id: 20260215-001
     label: N_A
-    last_verified: '2026-02-28'
-    max_dd_pct: null
-    metis_q1: N_A
-    metis_q2: N_A
-    metis_q3: N_A
-    metis_q4: N_A
+    last_verified: '2026-04-26'
+    max_dd_pct: 14.42
+    metis_q1: FAIL
+    metis_q2: FAIL
+    metis_q3: PASS
+    metis_q4: PASS
+    metis_verdict: ARCHIVE_FAIL_Q1_Q2
     nom: QAAF-R
-    notes: 'CNSR OOS 0.99 calculé avant correction de numéraire. Valeur indicative
-      seulement.
+    notes: 'Rétro Sprint C 2026-04-26. Pré-Studio CNSR=0.99 (avant correction numéraire).
+      Studio : CNSR=1.68 mais Q2 p=0.98 — artefact de lissage confirmé.
 
       '
     paf_d1: HIERARCHIE_CONFIRMEE
     paf_d2: REGIMES_NEUTRES
     paf_d3: ARTEFACT_LISSAGE
     raison_archive: 'TPR_haut = 0% sous conditions réalistes. Mécanisme : artefact
-      de lissage, pas signal géométrique.
+      de lissage, pas signal géométrique. MÉTIS Q2 p=0.98.
 
       '
-    score: null
-    sortino: null
+    score: 86
+    sortino: 2.545
     status: ARCHIVE
     std_alloc: null
     trades: null
@@ -106,30 +115,34 @@ lentilles:
   - N_trials_famille: 1
     baseline_cycles: 0
     calmar: null
-    cnsr_oos: null
-    cnsr_usd_fed: null
+    cnsr_oos: 3.801
+    cnsr_usd_fed: 3.801
     color: GRAY
     famille: geometric_regime
     frais_usd: null
     id: 20260301-001
     label: N_A
-    last_verified: '2026-03-10'
-    max_dd_pct: null
-    metis_q1: N_A
-    metis_q2: N_A
-    metis_q3: N_A
-    metis_q4: N_A
+    last_verified: '2026-04-26'
+    max_dd_pct: 7.34
+    metis_q1: FAIL
+    metis_q2: FAIL
+    metis_q3: PASS
+    metis_q4: PASS
+    metis_verdict: ARCHIVE_FAIL_Q1_Q2
     nom: PhaseCoherence
-    notes: ''
+    notes: 'Rétro Sprint C 2026-04-26. CNSR=3.801 mais MIF FAIL_PHASE_0 (T5 asymétrie
+      nulle) et Q2 p=0.99. Artefact pur — signal quasi-fixe en bull market.
+
+      '
     paf_d1: HIERARCHIE_CONFIRMEE
     paf_d2: REGIMES_NEUTRES
     paf_d3: ARTEFACT_LISSAGE
-    raison_archive: 'Dégrade le signal à iso-variance (PAF D3). Approximation de MR
-      déguisée en géométrie.
+    raison_archive: 'Dégrade le signal à iso-variance (PAF D3). MIF T5 FAIL : half_delta
+      ≈ 0 (aucun arbitrage PAXG/BTC). Q2 p=0.99 — bruit pur malgré CNSR élevé.
 
       '
-    score: null
-    sortino: null
+    score: 92
+    sortino: 7.901
     status: ARCHIVE
     std_alloc: null
     trades: null
@@ -174,17 +187,114 @@ lentilles:
     trend: N_A
     trend_source: N_A
     ttl_days: null
-  queue:
   - N_trials_famille: 103
-    description: 0% BTC quand BTC < MA200. Corrige MIF G1/G2/G3 FAIL.
+    baseline_cycles: 0
+    calmar: null
+    cnsr_oos: 0.894
+    cnsr_usd_fed: 0.894
+    color: GRAY
     famille: EMA_span_variants
+    frais_usd: null
+    id: 20260426-001
+    label: N_A
+    last_verified: '2026-04-26'
+    max_dd_pct: null
+    metis_q1: FAIL
+    metis_q2: FAIL
+    metis_q3: N_A
+    metis_q4: FAIL
+    metis_verdict: ARCHIVE_FAIL_Q1_Q2_Q4
     nom: H9+EMA60j+MA200_hard
-    priorite: 2
+    notes: 'Sprint A Avril 2026. 0% BTC quand BTC < MA200. MIF G1/G2/G3 non corrigé.
+
+      '
+    paf_d1: HIERARCHIE_CONFIRMEE
+    paf_d2: REGIMES_NEUTRES
+    paf_d3: H9_LISSE_SUPERIEUR
+    raison_archive: 'MÉTIS Q1/Q2/Q4 FAIL. Le filtre hard MA200 coupe trop le signal
+      en OOS bull market. CNSR=0.894 < H9+EMA60j.
+
+      '
+    score: 59
+    sortino: null
+    status: ARCHIVE
+    std_alloc: null
+    trades: null
+    trend: N_A
+    trend_source: N_A
+    ttl_days: null
   - N_trials_famille: 103
-    description: 50% allocation H9 quand BTC < MA200. Variante douce.
+    baseline_cycles: 0
+    calmar: null
+    cnsr_oos: 1.082
+    cnsr_usd_fed: 1.082
+    color: GRAY
     famille: EMA_span_variants
+    frais_usd: null
+    id: 20260426-002
+    label: N_A
+    last_verified: '2026-04-26'
+    max_dd_pct: null
+    metis_q1: FAIL
+    metis_q2: FAIL
+    metis_q3: N_A
+    metis_q4: FAIL
+    metis_verdict: ARCHIVE_FAIL_Q1_Q2_Q4
     nom: H9+EMA60j+MA200_soft
-    priorite: 2
-  - description: Généralisation H9+EMA60j sur ETH/BTC — après certification PAXG/BTC
-    nom: H9_lisse_ETH_BTC
-    priorite: 3
+    notes: 'Sprint A Avril 2026. 50% allocation H9 quand BTC < MA200. Meilleure variante
+      MA200.
+
+      '
+    paf_d1: HIERARCHIE_CONFIRMEE
+    paf_d2: REGIMES_NEUTRES
+    paf_d3: H9_LISSE_SUPERIEUR
+    raison_archive: 'MÉTIS Q1/Q2/Q4 FAIL. Meilleure variante MA200 (1.082) mais toujours
+      sous H9+EMA60j (1.285) en OOS bull.
+
+      '
+    score: 59
+    sortino: null
+    status: ARCHIVE
+    std_alloc: null
+    trades: null
+    trend: N_A
+    trend_source: N_A
+    ttl_days: null
+  - N_trials_famille: 103
+    baseline_cycles: 0
+    calmar: null
+    cnsr_oos: 0.821
+    cnsr_usd_fed: 0.821
+    color: GRAY
+    famille: EMA_span_variants
+    frais_usd: null
+    id: 20260426-003
+    label: N_A
+    last_verified: '2026-04-26'
+    max_dd_pct: 42.49
+    metis_q1: FAIL
+    metis_q2: FAIL
+    metis_q3: PASS
+    metis_q4: FAIL
+    metis_verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+    nom: H9+EMA60j_ETH-BTC
+    notes: 'Sprint C Avril 2026. Généralisation ETH/BTC. B_5050_ETH=0.861. Q3 PASS
+      (plateau EMA visible). Max DD 42.5%.
+
+      '
+    paf_d1: N_A
+    paf_d2: N_A
+    paf_d3: N_A
+    raison_archive: 'H9+EMA60j ne se généralise pas sur ETH/BTC. CNSR=0.821 < B_5050=0.861.
+      Max DD=42.5% (ETH volatilité supérieure à PAXG). MÉTIS Q1/Q2/Q4 FAIL.
+
+      '
+    score: 20
+    sortino: 1.227
+    status: ARCHIVE
+    std_alloc: null
+    trades: null
+    trend: N_A
+    trend_source: N_A
+    ttl_days: null
+  queue: []

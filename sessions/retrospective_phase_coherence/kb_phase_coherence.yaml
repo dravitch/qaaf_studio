@@ -1,0 +1,53 @@
+hypothese:
+  nom: PhaseCoherence
+  statut: historique
+  famille: geometric_regime
+  N_trials_famille: 1
+  description: 'Composante phase seule — sans cross-asset BTC. Dégrade le signal à
+    iso-variance. Approximation de MR déguisée en géométrie (PAF D3).
+
+    '
+  split:
+    label: PAXG_BTC_config
+    is_start: '2020-06-01'
+    is_end: '2023-05-31'
+    oos_start: '2023-06-01'
+    oos_end: '2024-12-31'
+  paf:
+    D1: HIERARCHIE_CONFIRMEE
+    D2: REGIMES_NEUTRES
+    D3: ARTEFACT_LISSAGE
+    date_paf: '2026-03-10'
+    source: historique pré-Studio (PAF directions 1-3)
+  notes: 'Dégrade le signal à iso-variance vs H9+EMA60j (PAF D3). Approximation MR
+    déguisée en géométrie. Rétro Sprint C Avril 2026.
+
+    '
+metis:
+  verdict: ARCHIVE_FAIL_Q1_Q2
+  cnsr_oos: 1.2645
+  q1:
+    verdict: FAIL
+    n_pass: 3
+    median_cnsr: 0.8333
+  q2:
+    verdict: FAIL
+    pvalue: 0.99
+    cnsr_obs: 1.2645
+  q3:
+    verdict: PASS
+    is_spike: false
+    cnsr_target: -0.0905
+  q4:
+    verdict: PASS
+    dsr: 0.9739
+    n_trials: 1
+date: '2026-04-26'
+verdict: archive
+metrics:
+  cnsr_usd_fed: 3.801
+  sortino: 7.901
+  max_dd_pct: 7.34
+  dsr: 1.0
+  dsig_score: 92
+notes: MÉTIS Q1Q2Q3Q4 | N=1 | MIF FAIL_PHASE_0

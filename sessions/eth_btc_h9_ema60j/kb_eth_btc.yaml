@@ -1,0 +1,53 @@
+hypothese:
+  nom: H9+EMA60j_ETH-BTC
+  statut: en_cours
+  famille: EMA_span_variants
+  N_trials_famille: 103
+  description: 'Généralisation de H9+EMA60j sur ETH/BTC. Même algorithme, nouvel instrument.
+    Motivation : tester la robustesse du mécanisme H9 au-delà de PAXG/BTC.
+
+    '
+  split:
+    label: ETH_BTC_config
+    is_start: '2020-06-01'
+    is_end: '2023-05-31'
+    oos_start: '2023-06-01'
+    oos_end: '2024-12-31'
+  paf:
+    D1: N_A
+    D2: N_A
+    D3: N_A
+    date_paf: null
+    source: generalisation sprint C - PAF non encore completee
+  notes: 'Généralisation Sprint C Avril 2026. MIF Phase 1 utilise données synthétiques
+    PAXG/BTC (proxy acceptable). PAF ETH/BTC à compléter si session passe MÉTIS.
+
+    '
+metis:
+  verdict: ARCHIVE_FAIL_Q1_Q2_Q4
+  cnsr_oos: 0.8422
+  q1:
+    verdict: FAIL
+    n_pass: 3
+    median_cnsr: 0.733
+  q2:
+    verdict: FAIL
+    pvalue: 0.962
+    cnsr_obs: 0.8422
+  q3:
+    verdict: PASS
+    is_spike: false
+    cnsr_target: 0.6118
+  q4:
+    verdict: FAIL
+    dsr: 0.1317
+    n_trials: 103
+date: '2026-04-26'
+verdict: archive
+metrics:
+  cnsr_usd_fed: 0.821
+  sortino: 1.227
+  max_dd_pct: 42.49
+  dsr: 0.1257
+  dsig_score: 20
+notes: MÉTIS Q1Q2Q3Q4 | N=103 | MIF FAIL_PHASE_1

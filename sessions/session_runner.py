@@ -53,7 +53,7 @@ class SessionRunner:
     """
     Protocole complet de certification QAAF Studio 3.0 :
     KB check → données → benchmarks → PAF (KB) → métriques OOS →
-    MIF → MÉTIS → D-SIG → verdict → KB update.
+    MIF → MÉTIS → D-SIG → verdict → KB update → rapport HTML.
     """
 
     def __init__(
@@ -65,14 +65,16 @@ class SessionRunner:
         params: dict,
         n_trials: int | None = None,
         params_hook: Callable | None = None,
+        data_fn: Callable | None = None,
     ):
-        self.hypothesis  = hypothesis
-        self.family      = family
-        self.kb_path     = Path(kb_path)
-        self.signal_fn   = signal_fn
-        self.params      = params
-        self._n_trials   = n_trials   # None = read from KB
-        self._params_hook = params_hook  # (bundle) -> dict, augments params after load
+        self.hypothesis   = hypothesis
+        self.family       = family
+        self.kb_path      = Path(kb_path)
+        self.signal_fn    = signal_fn
+        self.params       = params
+        self._n_trials    = n_trials      # None = read from KB
+        self._params_hook = params_hook   # (bundle) -> dict, augments params after load
+        self._data_fn     = data_fn       # () -> (bundle, r_pair, r_base), replaces _load_data
 
     # ── Public ───────────────────────────────────────────────────────────────
 
@@ -129,7 +131,8 @@ class SessionRunner:
         print(f"  B_PAXG CNSR = {b_paxg['cnsr_usd_fed']:.3f}")
 
         # ── 4. PAF — chargé depuis KB ────────────────────────────────────────
-        paf_verdict = self._load_paf_from_kb(kb)
+        paf_data    = self._load_paf_from_kb(kb)
+        paf_verdict = paf_data["verdict"]
 
         # ── 5. Métriques OOS brutes ──────────────────────────────────────────
         print(f"\n{'─'*62}")
@@ -235,6 +238,15 @@ class SessionRunner:
         print(f"  D-SIG : {signal.score}/100 — {signal.label} ({signal.color})")
         print(f"{'='*62}")
 
+        # ── 10. HTML Report (failure-safe) ───────────────────────────────────
+        try:
+            self._generate_html_report(
+                n_trials, metrics_oos, dsr_oos, paf_data, metis_report, signal, verdict
+            )
+        except Exception as _exc:
+            import warnings as _w
+            _w.warn(f"HTML report generation skipped: {_exc}")
+
         return {
             "hypothesis": self.hypothesis,
             "verdict":    verdict,
@@ -250,6 +262,8 @@ class SessionRunner:
     # ── Private ───────────────────────────────────────────────────────────────
 
     def _load_data(self):
+        if self._data_fn is not None:
+            return self._data_fn()
         try:
             loader = DataLoader(config_path=_CONFIG_PATH)
             paxg_usd, btc_usd, r_paxg_usd, r_btc_usd = loader.load_prices(
@@ -283,19 +297,121 @@ class SessionRunner:
                   f"({r_paxg_usd.index[0].date()} → {r_paxg_usd.index[-1].date()})")
         return bundle, r_paxg_usd, r_btc_usd
 
-    def _load_paf_from_kb(self, kb: KBManager) -> str:
-        """Reads PAF verdict from KB (hypothese.paf.D1/D2/D3) and prints summary."""
-        hyp_data = kb._load_hyp()
+    def _load_paf_from_kb(self, kb: KBManager) -> dict:
+        """Reads PAF verdicts from KB (hypothese.paf.D1/D2/D3) and prints summary."""
+        hyp_data  = kb._load_hyp()
         hypothese = hyp_data.get("hypothese", {})
-        paf = hypothese.get("paf", {})
-        d1 = paf.get("D1", "N_A")
-        d2 = paf.get("D2", "N_A")
-        d3 = paf.get("D3", "N_A")
-        date_paf = paf.get("date_paf", "")
+        paf       = hypothese.get("paf", {})
+        d1        = paf.get("D1", "N_A")
+        d2        = paf.get("D2", "N_A")
+        d3        = paf.get("D3", "N_A")
+        date_paf  = paf.get("date_paf", "")
         print(f"\n{'─'*62}")
         label = f"certifié {date_paf}" if date_paf else "chargé depuis KB"
         print(f"PAF : résultats {label}")
         print(f"  D1 : {d1}")
         print(f"  D2 : {d2}")
         print(f"  D3 : {d3}")
-        return d3 if d3 != "N_A" else d1
+        verdict = d3 if d3 != "N_A" else d1
+        return {"D1": d1, "D2": d2, "D3": d3, "verdict": verdict}
+
+    def _generate_html_report(
+        self,
+        n_trials: int,
+        metrics_oos: dict,
+        dsr_oos: float,
+        paf_data: dict,
+        metis_report,
+        signal,
+        verdict: str,
+    ) -> None:
+        from datetime import date as _date
+
+        safe   = self.hypothesis.replace("+", "_").replace("/", "_").replace(" ", "_")
+        outdir = self.kb_path.parent / "results"
+        outdir.mkdir(exist_ok=True)
+        path   = outdir / f"{safe}_report.html"
+
+        q1_v = metis_report.q1.verdict if metis_report.q1 else "N_A"
+        q2_v = metis_report.q2.verdict if metis_report.q2 else "N_A"
+
+        color_hex = {
+            "GREEN": "#00c853", "YELLOW": "#ffd600",
+            "ORANGE": "#ff6d00", "RED": "#d50000",
+        }.get(str(signal.color), "#616161")
+        txt_color = "#000" if str(signal.color) == "YELLOW" else "#fff"
+
+        def _cls(v):
+            return "pass" if v == "PASS" else ("fail" if v == "FAIL" else "na")
+
+        cnsr    = float(metrics_oos.get("cnsr_usd_fed", 0.0))
+        sortino = float(metrics_oos.get("sortino", 0.0))
+        max_dd  = float(metrics_oos.get("max_dd_pct", 0.0))
+        dsr_cls = "pass" if dsr_oos >= 0.95 else "fail"
+
+        html = f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>QAAF Studio — {self.hypothesis}</title>
+  <style>
+    body{{font-family:monospace;max-width:900px;margin:40px auto;background:#1a1a2e;color:#eee;padding:0 20px}}
+    h1{{color:#00d4ff;margin-bottom:4px}} h2{{color:#00d4ff;border-bottom:1px solid #333;padding-bottom:6px}}
+    .section{{background:#16213e;padding:16px;margin:16px 0;border-radius:8px}}
+    table{{width:100%;border-collapse:collapse;margin:8px 0}}
+    th,td{{padding:8px 12px;text-align:left;border-bottom:1px solid #2a2a4e}}
+    th{{background:#0f3460;color:#00d4ff}}
+    .pass{{color:#00c853;font-weight:bold}} .fail{{color:#ff5252;font-weight:bold}} .na{{color:#888}}
+    .mv{{font-size:1.1em;font-weight:bold}}
+    .badge{{display:inline-block;padding:6px 16px;border-radius:4px;font-weight:bold;font-size:1.1em}}
+    .sub{{color:#aaa;margin-top:4px;margin-bottom:16px}}
+    footer{{color:#555;margin-top:32px;font-size:0.85em}}
+  </style>
+</head>
+<body>
+  <h1>QAAF Studio 3.0 — {self.hypothesis}</h1>
+  <p class="sub">Famille : {self.family} | N_trials : {n_trials} | {_date.today()}</p>
+
+  <div class="section">
+    <h2>Verdict Final</h2>
+    <span class="badge" style="background:{color_hex};color:{txt_color}">{verdict}</span>
+    &nbsp;&nbsp;D-SIG : <strong>{signal.score}/100</strong> — {signal.label} ({signal.color})
+  </div>
+
+  <div class="section">
+    <h2>Métriques OOS</h2>
+    <table>
+      <tr><th>Métrique</th><th>Valeur</th></tr>
+      <tr><td>CNSR-USD-Fed</td><td class="mv">{cnsr:.3f}</td></tr>
+      <tr><td>Sortino</td><td class="mv">{sortino:.3f}</td></tr>
+      <tr><td>Max DD %</td><td class="mv">{max_dd:.1f}%</td></tr>
+      <tr><td>DSR (N={n_trials})</td><td class="mv {dsr_cls}">{dsr_oos:.4f}</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>PAF — Portfolio Attribution Framework</h2>
+    <table>
+      <tr><th>Direction</th><th>Verdict</th></tr>
+      <tr><td>D1 — Hiérarchie</td><td>{paf_data.get('D1','N_A')}</td></tr>
+      <tr><td>D2 — Régimes</td><td>{paf_data.get('D2','N_A')}</td></tr>
+      <tr><td>D3 — Source</td><td>{paf_data.get('D3','N_A')}</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>MÉTIS — Validation Statistique</h2>
+    <table>
+      <tr><th>Question</th><th>Verdict</th></tr>
+      <tr><td>Q1 — Walk-forward (5 fenêtres)</td>
+          <td class="{_cls(q1_v)}">{q1_v}</td></tr>
+      <tr><td>Q2 — Permutation (p-value &lt; 0.05)</td>
+          <td class="{_cls(q2_v)}">{q2_v}</td></tr>
+    </table>
+  </div>
+
+  <footer>Généré par QAAF Studio 3.0 — {_date.today()} — dravitch/qaaf_studio</footer>
+</body></html>"""
+
+        path.write_text(html, encoding="utf-8")
+        print(f"\n  📄 Rapport HTML : {path}")

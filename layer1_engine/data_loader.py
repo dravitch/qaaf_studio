@@ -160,6 +160,37 @@ class DataLoader:
             r_btc.loc[common2],
         )
 
+    def load_eth_btc(
+        self,
+        start: str = "2019-01-01",
+        end:   str = "2024-12-31",
+        use_cache: bool = True,
+    ) -> Tuple[pd.Series, pd.Series, pd.Series, pd.Series]:
+        """
+        Charge ETH et BTC en prix USD.
+
+        Retourne
+        --------
+        eth_usd, btc_usd, r_eth_usd, r_btc_usd (log-rendements quotidiens)
+        """
+        eth_usd = self._load_ticker(self.tickers["eth"], start, end, use_cache)
+        btc_usd = self._load_ticker(self.tickers["btc"], start, end, use_cache)
+
+        common  = eth_usd.index.intersection(btc_usd.index)
+        eth_usd = eth_usd.loc[common]
+        btc_usd = btc_usd.loc[common]
+
+        r_eth  = np.log(eth_usd / eth_usd.shift(1)).dropna()
+        r_btc  = np.log(btc_usd / btc_usd.shift(1)).dropna()
+        common2 = r_eth.index.intersection(r_btc.index)
+
+        return (
+            eth_usd.loc[common2],
+            btc_usd.loc[common2],
+            r_eth.loc[common2],
+            r_btc.loc[common2],
+        )
+
     def get_pair_returns(
         self,
         r_paxg_usd: pd.Series,
