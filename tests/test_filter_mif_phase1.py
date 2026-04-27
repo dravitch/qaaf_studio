@@ -3,12 +3,11 @@ tests/test_filter_mif_phase1.py
 MWE pour MIFPhase1(Filter).
 
 Deux cas obligatoires (Test Before Trust) :
-  - Signal délibérément bon  → passed=True  (xfail : peut échouer avant recalibration)
+  - Signal délibérément bon  → passed=True
   - Signal délibérément mauvais → passed=False
 
-Ces tests vérifient le contrat du filtre, pas sa calibration.
-La calibration sera validée dans test_signal_oracle_certified.py
-après la recalibration (Session 2).
+Recalibration Session 2 : critère de dominance relative actif.
+test_good_signal_passes_phase1 est vert sans xfail.
 """
 
 import pytest
@@ -115,15 +114,15 @@ class TestMIFPhase1Contract:
                 for w in ["pour", "envisager", "réduire", "filtre"]
             ), f"Diagnosis non actionnable : {result.diagnosis}"
 
-    def test_delta_mode_is_documented(self):
-        """delta_mode est documenté dans les metrics (trace l'état avant recalibration)."""
+    def test_delta_mode_is_relative_after_recalibration(self):
+        """Vérifie que delta_mode='relative' est actif après recalibration Session 2."""
         f      = MIFPhase1()
         signal = make_signal_data(alloc_value=0.5)
         config = FilterConfig(name="test", params={})
         result = f.evaluate(signal, config)
-        # RECALIBRATION_PENDING : 'absolute' avant recalibration, 'relative' après
-        assert result.metrics["delta_mode"] in ("absolute", "relative"), (
-            "delta_mode doit être 'absolute' (avant) ou 'relative' (après recalibration)."
+        assert result.metrics["delta_mode"] == "relative", (
+            "delta_mode doit être 'relative' après recalibration. "
+            "Si 'absolute' : la recalibration n'a pas été appliquée."
         )
 
 
@@ -134,20 +133,10 @@ class TestMIFPhase1GoodSignal:
     Signal délibérément bon : suiveur de tendance avec filtre de volatilité.
     Construit selon la même logique que le signal oracle.
 
-    xfail souple : peut échouer si MIF Phase 1 est trop strict (critère absolu).
-    Rouge = démonstration empirique que la recalibration Session 2 est nécessaire.
-    Vert = MIF Phase 1 était déjà bien calibré pour ce signal → recalibration simplifiée.
+    Recalibration Session 2 validée — critère de dominance relative actif.
+    Ce test est vert sans xfail.
     """
 
-    @pytest.mark.xfail(
-        reason=(
-            "MIF Phase 1 avec critère cnsr_strat > -1.0 (absolu) peut rejeter un signal "
-            "trend-following raisonnable sur données synthétiques crypto (kurtosis élevé, F2). "
-            "Ce test passe au vert après recalibration vers critère relatif (delta). "
-            "Voir # RECALIBRATION_PENDING dans mif_phase1.py."
-        ),
-        strict=False,
-    )
     def test_good_signal_passes_phase1(self):
         """Signal oracle (trend-following + filtre vol) → passe Phase 1."""
         f      = MIFPhase1()

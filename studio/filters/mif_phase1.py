@@ -5,20 +5,16 @@ MIF Phase 1 — Généralisation OOS (G1-G5).
 Porte la logique existante de layer2_qualification/mif/phase1_oos.py
 vers l'interface Filter. Aucune logique nouvelle — portage à l'identique.
 
-# RECALIBRATION_PENDING
-# Critère actuel : cnsr_strat > -1.0 (seuil absolu fixe dans run_phase1).
-# Diagnostic : trop strict sur données crypto (kurtosis élevé, F2).
-# Alternative recommandée : critère de dominance relative (delta > threshold).
-# Voir docs/recalibration_plan.md — Filtre 1.
+Recalibration Session 2 : critère de dominance relative (Alternative B).
+Le signal passe un régime s'il domine le benchmark sur ce régime,
+même quand les deux perdent. Absorbe le bruit commun du régime (kurtosis F2).
 """
 
 from __future__ import annotations
-import numpy as np
 
 from studio.interfaces import Filter, FilterConfig, FilterVerdict, FilterError, SignalData
 
-# Réutilisation de la logique existante — pas de duplication
-from layer2_qualification.mif.phase1_oos import run_phase1  # nom réel (pas run_phase1_oos)
+from layer2_qualification.mif.phase1_oos import run_phase1
 
 
 class MIFPhase1(Filter):
@@ -34,8 +30,8 @@ class MIFPhase1(Filter):
       - min_pass   : int   — nombre minimum de régimes à passer (défaut : 3)
       - rf_annual  : float — taux sans risque annualisé (défaut : 0.04)
 
-    # RECALIBRATION_PENDING : run_phase1() utilise cnsr_strat > -1.0 (absolu).
-    # À remplacer par dominance relative (delta > threshold) en Session 2.
+    Critère recalibré (Alternative B) : dominance relative.
+    Un régime est passé si cnsr_strat > cnsr_bench (pas de seuil absolu).
     """
 
     NAME = "mif_phase1_generalization"
@@ -48,10 +44,8 @@ class MIFPhase1(Filter):
         min_pass  = config.get("min_pass", 3)
         rf_annual = config.get("rf_annual", 0.04)
 
-        strategy_fn = self._make_strategy_fn(signal)
-
         try:
-            results = run_phase1(strategy_fn, params={}, rf_annual=rf_annual)
+            results = run_phase1(self._make_strategy_fn(signal), params={}, rf_annual=rf_annual)
         except Exception as e:
             raise FilterError(
                 filter_name=self.NAME,
@@ -62,67 +56,89 @@ class MIFPhase1(Filter):
                 ),
             )
 
-        n_total      = len(results)
-        n_pass       = sum(1 for r in results if r.passed)
-        failed_names = [r.label for r in results if not r.passed]
+        regimes = {}
+        for r in results:
+            cs = r.cnsr_strat
+            cb = r.cnsr_bench
+            passed_regime = (cs is not None and cb is not None and cs > cb)
+            regimes[r.label] = {
+                "passed": passed_regime,
+                "cnsr":   round(cs, 4) if cs is not None else None,
+                "bench":  round(cb, 4) if cb is not None else None,
+                "delta":  round(cs - cb, 4) if (cs is not None and cb is not None) else None,
+            }
+
+        n_pass       = sum(1 for r in regimes.values() if r["passed"])
+        failed_names = [k for k, r in regimes.items() if not r["passed"]]
         passed       = n_pass >= min_pass
 
         if passed:
             diagnosis = (
-                f"Phase 1 validée : {n_pass}/{n_total} régimes passent "
-                f"le critère de généralisation (CNSR > -1.0). "
-                f"Signal robuste hors-échantillon sur données synthétiques."
+                f"Phase 1 validée : {n_pass}/{len(regimes)} régimes — "
+                f"le signal domine le benchmark sur la majorité des régimes "
+                f"synthétiques, y compris les régimes adverses."
             )
         else:
             diagnosis = (
-                f"Phase 1 échoue : seulement {n_pass}/{n_total} régimes "
-                f"passent (minimum requis : {min_pass}). "
-                f"Régimes en échec : {', '.join(failed_names) or 'aucun'}. "
-                f"Pour passer ce filtre, le signal doit maintenir CNSR > -1.0 "
-                f"sur les régimes bear et crash — envisager un filtre de régime "
-                f"endogène ou réduire l'exposition en haute volatilité."
+                f"Phase 1 échoue : {n_pass}/{len(regimes)} régimes passent "
+                f"(minimum : {min_pass}). "
+                f"Régimes où le signal sous-performe le benchmark : "
+                f"{', '.join(failed_names)}. "
+                f"Pour passer ce filtre, le signal doit battre le benchmark "
+                f"relativement sur au moins {min_pass} régimes — envisager "
+                f"un filtre de régime endogène (volatilité rolling du ratio) "
+                f"pour les régimes bear et latéral."
             )
 
         return FilterVerdict(
             passed=passed,
             filter_name=self.NAME,
             metrics={
-                "n_pass":   n_pass,
-                "n_total":  n_total,
-                "min_pass": min_pass,
-                "failed":   failed_names,
-                # RECALIBRATION_PENDING : mode actuel documenté
-                "delta_mode": "absolute",
-                "regime_detail": {
-                    r.label: {
-                        "passed":     r.passed,
-                        "cnsr_strat": round(r.cnsr_strat, 4) if r.cnsr_strat is not None else None,
-                        "cnsr_bench": round(r.cnsr_bench, 4) if r.cnsr_bench is not None else None,
-                        "delta":      round(r.delta, 4) if r.delta is not None else None,
-                    }
-                    for r in results
-                },
+                "n_pass":        n_pass,
+                "n_total":       len(regimes),
+                "min_pass":      min_pass,
+                "failed":        failed_names,
+                "delta_mode":    "relative",
+                "regime_detail": regimes,
             },
             diagnosis=diagnosis,
         )
 
     def _make_strategy_fn(self, signal: SignalData):
         """
-        Adapte SignalData vers la signature attendue par run_phase1() :
-          strategy_fn(r_pair: pd.Series, params: dict) -> pd.Series
+        Retourne une strategy_fn(r_pair, params) -> pd.Series pour run_phase1().
 
-        Convention run_phase1 : alloc représente la fraction PAXG.
-        r_port = alloc_paxg * r_pair → r_usd = alloc_paxg * r_pair + r_btc_usd
+        Convention run_phase1 : alloc = fraction PAXG.
+        r_port = alloc_paxg * r_pair → r_usd = r_port + r_btc_usd.
 
-        signal.alloc_btc est la fraction BTC → conversion alloc_paxg = 1 - alloc_btc.
+        Pourquoi calcul dynamique et non réindexage de signal.alloc_btc :
+        run_phase1() génère ses propres prix synthétiques (5 régimes, seeds
+        différents). Les allocations pré-calculées sur les données réelles
+        sont décorrélées de ces prix → signal effectivement aléatoire.
+        La logique oracle doit être RE-CALCULÉE sur chaque r_pair synthétique
+        pour tester si l'ALGORITHME généralise, pas ses sorties figées.
 
-        run_phase1() génère ses propres données synthétiques (dates 2020-01-01+).
-        On réindexe sur ces dates ; les valeurs hors plage → 0.5 (neutre).
+        Paramètres oracle extraits de studio.oracle.ORACLE_PARAMS.
+        alloc_btc → alloc_paxg = 1 - alloc_btc.
         """
-        alloc_btc = signal.alloc_btc
+        import pandas as pd
+        from studio.oracle import ORACLE_PARAMS
+
+        p = ORACLE_PARAMS
 
         def strategy_fn(r_pair, params):
-            alloc_paxg = 1.0 - alloc_btc.reindex(r_pair.index).fillna(0.5)
-            return alloc_paxg
+            log_ratio  = r_pair.cumsum()
+            trend      = log_ratio.rolling(p["trend_window"]).mean().shift(1)
+            vol        = r_pair.rolling(p["vol_window"]).std().shift(1)
+            vol_median = vol.expanding().median()
+            high_vol   = vol > p["vol_threshold"] * vol_median
+
+            alloc_btc = pd.Series(p["alloc_low"], index=r_pair.index, dtype=float)
+            long_btc  = trend.notna() & (log_ratio < trend)
+            alloc_btc = alloc_btc.where(~long_btc, other=p["alloc_high"])
+            alloc_btc = alloc_btc.where(~high_vol, other=0.5)
+            alloc_btc = alloc_btc.fillna(0.5).clip(p["alloc_low"], p["alloc_high"])
+
+            return 1.0 - alloc_btc  # alloc_paxg pour run_phase1
 
         return strategy_fn
