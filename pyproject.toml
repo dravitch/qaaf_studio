@@ -20,3 +20,6 @@ include = ["layer1_engine*", "layer2_qualification*", "layer3_validation*", "lay
 
 [tool.pytest.ini_options]
 addopts = "--basetemp=.pytest_tmp"
+markers = [
+    "pipeline_certification: tests de certification complète du pipeline (rouge avant recalibration, vert après Livrable 4)",
+]
