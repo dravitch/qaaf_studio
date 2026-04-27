@@ -176,7 +176,7 @@ class TestMetisQ2GoodSignal:
             f"regime_adjusted=False : le bull run OOS n'a pas été détecté. "
             f"diff cnsr_bench OOS-IS="
             f"{result.metrics.get('cnsr_bench_oos', 0) - result.metrics.get('cnsr_bench_is', 0):.3f} "
-            f"≤ regime_margin=1.5. Vérifier les données de test."
+            f"≤ regime_margin=0.8. Vérifier les données de test."
         )
         assert result.passed, (
             f"Q2 rejette le signal oracle même en régime bull. "

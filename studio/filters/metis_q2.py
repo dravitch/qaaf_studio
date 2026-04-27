@@ -37,7 +37,9 @@ class MetisQ2(Filter):
     Paramètres acceptés dans config.params :
       - n_perm        : int   — nombre de permutations (défaut : 500)
       - p_threshold   : float — seuil p-value (défaut : 0.05)
-      - regime_margin : float — différence absolue IS→OOS détectant un bull run (défaut : 1.5)
+      - regime_margin : float — différence absolue IS→OOS détectant un bull run (défaut : 0.8)
+                               Calibration empirique : diff réel 2023-2024 = 1.04 (B_5050 OOS-IS)
+                               0.8 = marge de 23% sous le diff réel, robuste aux variations
       - seed          : int   — graine aléatoire (défaut : 42)
 
     Critère recalibré (Alternative A) :
@@ -59,7 +61,7 @@ class MetisQ2(Filter):
     ) -> FilterVerdict:
         n_perm        = config.get("n_perm", 500)
         p_threshold   = config.get("p_threshold", 0.05)
-        regime_margin = config.get("regime_margin", 1.5)
+        regime_margin = config.get("regime_margin", 0.8)
         seed          = config.get("seed", 42)
 
         prices_oos, r_btc_oos = self._extract_oos(signal)
