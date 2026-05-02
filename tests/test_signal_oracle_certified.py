@@ -25,7 +25,7 @@ from studio.oracle import compute_oracle_signal, ORACLE_PARAMS
 # → les tests de certification sont SKIPPED jusqu'au Livrable 4.
 
 try:
-    from layer2_qualification.mif import MetisQ1WalkForward          # noqa: F401
+    from layer2_qualification.mif import MetisQ1WalkForward          # noqa: F401  # alias de MIFPhase1 (G1-G5) — le vrai walk-forward est MetisQ1 dans studio/filters/metis_q1.py
     from layer1_engine.data_loader import make_synthetic_paxg_btc    # noqa: F401
     from layer3_validation.metis import MetisQ2Permutation           # noqa: F401
     from layer3_validation.dsr import DSRFilter                      # noqa: F401

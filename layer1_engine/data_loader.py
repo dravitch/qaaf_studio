@@ -242,3 +242,54 @@ class DataLoader:
             )
 
         return prices
+
+
+# ── Utilitaire de certification oracle (Étape E) ──────────────────────────────
+
+def make_synthetic_paxg_btc(alloc_btc: "pd.Series") -> "SignalData":
+    """
+    Crée un SignalData synthétique à partir d'une série alloc_btc oracle.
+
+    Utilisé par test_signal_oracle_certified.py pour l'Étape E.
+    Reconstruit la paire PAXG/BTC avec le même seed que _make_prices(n, seed=0)
+    du test de certification, garantissant la cohérence des prix avec l'oracle.
+
+    IS  = 60% de l'historique (même split que la calibration Q4).
+    OOS = 40% restants.
+    """
+    import numpy as np
+    import pandas as pd
+    from studio.interfaces import SignalData
+
+    idx = alloc_btc.index
+    n   = len(idx)
+
+    # Même série que _make_prices(n, seed=0) dans le test de certification
+    rng_pair = np.random.default_rng(0)
+    pair_vals = rng_pair.lognormal(0, 0.02, n).cumprod() * 2000.0
+    pair = pd.Series(pair_vals, index=idx, name="paxg_btc")
+
+    # Prix BTC indépendants (seed=1), PAXG = pair × BTC
+    rng_btc = np.random.default_rng(1)
+    btc = pd.Series(
+        100 * np.exp(np.cumsum(rng_btc.normal(0.001, 0.03, n))),
+        index=idx, name="btc_usd",
+    )
+    paxg = (pair * btc).rename("paxg_usd")
+
+    # Split IS/OOS : 60% IS, 40% OOS (calibration Q4 : dsr=0.9634 avec n=1800)
+    n_is = int(n * 0.60)
+    is_end_date    = str((idx[n_is] - pd.Timedelta(days=1)).date())
+    oos_start_date = str(idx[n_is].date())
+    oos_end_date   = str(idx[-1].date())
+
+    return SignalData(
+        alloc_btc=alloc_btc,
+        prices_pair=pair,
+        prices_base_usd=btc,
+        prices_quote_usd=paxg,
+        is_start=str(idx[0].date()),
+        is_end=is_end_date,
+        oos_start=oos_start_date,
+        oos_end=oos_end_date,
+    )
