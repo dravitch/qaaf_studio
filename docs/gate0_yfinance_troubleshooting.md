@@ -177,3 +177,47 @@ hypothèses 1, 2, 3, 4 ci-dessus. Ne pas lancer de session comparative tant
 que Gate 0 est rouge ou skippée.
 
 **Voir aussi** : `tests/test_benchmark_calibration.py` — décorateur `_skip_if_no_data`
+
+---
+
+## Résolution — Mai 2026
+
+**Cause racine confirmée : H2 — rate-limiting Yahoo Finance (429) sur NixOS**
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" \
+  "https://query1.finance.yahoo.com/v8/finance/chart/PAXG-USD?interval=1d&range=1mo"
+# → 429 sans User-Agent
+# → 200 avec User-Agent browser
+```
+
+H1, H3, H4 étaient des symptômes en cascade : df vide → shape (0,1) →
+index vide → DQF FAIL. La cause unique est le blocage réseau Yahoo.
+
+**Solution appliquée : fallback requests natif dans `_download_ticker`**
+
+- yfinance tenté en premier (fonctionne sur Windows)
+- Si données vides (< 30 points) → fallback `requests` avec User-Agent browser
+- Index normalisé tz-naive pour cohérence avec yfinance 0.2.51
+- Guard anti-corruption cache : fichier < 30 points → suppression automatique
+
+**Commit** : `fix(data_loader): fallback requests natif pour 429 Yahoo sur NixOS`
+**Branche** : `fix/yfinance-nixos-diagnosis`
+**Résultat** : Gate 0 — 11/11 PASS (était 11 skipped sur NixOS)
+
+**Note yfinance long terme** : la baseline 0.2.51 est fonctionnelle mais pas
+pérenne. Migration vers yfinance 1.3.0 à planifier en session dédiée après
+certification H9+EMA60j — le MultiIndex et la structure JSON ont changé.
+
+**Statut** : RÉSOLU — archivé.
+```
+
+Applique cet addendum dans le fichier, puis commit sur la même branche avant la PR :
+
+```bash
+git add docs/gate0_yfinance_troubleshooting.md  # ou le chemin exact
+git commit -m "docs: archiver gate0_yfinance_troubleshooting avec résolution H2"
+git push origin fix/yfinance-nixos-diagnosis
+```
+
+Ensuite on ouvre la PR et on passe aux Points 2 et 3.
